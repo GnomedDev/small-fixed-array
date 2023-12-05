@@ -1,0 +1,112 @@
+use std::fmt::Write as _;
+
+use crate::FixedArray;
+
+#[derive(Default, Clone, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
+pub struct FixedString(FixedArray<u8>);
+
+impl FixedString {
+    pub fn new() -> Self {
+        FixedString(FixedArray::default())
+    }
+
+    pub fn as_str(&self) -> &str {
+        self
+    }
+
+    pub fn into_string(self) -> String {
+        self.into()
+    }
+}
+
+impl std::ops::Deref for FixedString {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::str::from_utf8_unchecked(&self.0) }
+    }
+}
+
+impl std::ops::DerefMut for FixedString {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::str::from_utf8_unchecked_mut(&mut self.0) }
+    }
+}
+
+impl std::cmp::PartialEq<&str> for FixedString {
+    fn eq(&self, other: &&str) -> bool {
+        (&self.as_str()).eq(other)
+    }
+}
+
+impl std::cmp::PartialEq<str> for FixedString {
+    fn eq(&self, other: &str) -> bool {
+        self.as_str().eq(other)
+    }
+}
+
+impl std::cmp::PartialEq<FixedString> for &str {
+    fn eq(&self, other: &FixedString) -> bool {
+        other == self
+    }
+}
+
+impl std::cmp::PartialEq<FixedString> for str {
+    fn eq(&self, other: &FixedString) -> bool {
+        other == self
+    }
+}
+
+impl std::cmp::PartialOrd for FixedString {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::cmp::Ord for FixedString {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
+
+impl std::fmt::Display for FixedString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self)
+    }
+}
+
+impl std::fmt::Debug for FixedString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_char('"')?;
+        f.write_str(self)?;
+        f.write_char('"')
+    }
+}
+
+impl From<String> for FixedString {
+    fn from(value: String) -> Self {
+        let value = value.into_bytes();
+        Self(value.into())
+    }
+}
+
+impl From<FixedString> for String {
+    fn from(value: FixedString) -> Self {
+        unsafe { String::from_utf8_unchecked(value.0.into()) }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for FixedString {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer).map(Self::from)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for FixedString {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.as_str().serialize(serializer)
+    }
+}
