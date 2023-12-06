@@ -42,6 +42,12 @@ impl<T> FixedArray<T> {
         self.into()
     }
 
+    /// Converts [`FixedArray<T>`] to `Box<[T]>`, this operation should be cheap.
+    #[must_use]
+    pub fn into_boxed_slice(self) -> Box<[T]> {
+        self.into()
+    }
+
     /// Converts `&`[`FixedArray<T>`] to `&[T]`, this conversion can be performed by [`std::ops::Deref`].
     #[must_use]
     pub fn as_slice(&self) -> &[T] {
@@ -148,8 +154,7 @@ impl<T> From<FixedArray<T>> for Box<[T]> {
 
 impl<T> From<FixedArray<T>> for Vec<T> {
     fn from(value: FixedArray<T>) -> Self {
-        let boxed_array: Box<[T]> = value.into();
-        boxed_array.into_vec()
+        value.into_boxed_slice().into_vec()
     }
 }
 
@@ -161,8 +166,13 @@ impl<T> From<Box<[T]>> for FixedArray<T> {
 
 impl<T> From<Vec<T>> for FixedArray<T> {
     fn from(value: Vec<T>) -> Self {
-        let boxed_array = value.into_boxed_slice();
-        Self::from(boxed_array)
+        Self::from(value.into_boxed_slice())
+    }
+}
+
+impl<T> From<FixedArray<T>> for std::sync::Arc<[T]> {
+    fn from(value: FixedArray<T>) -> Self {
+        std::sync::Arc::from(value.into_boxed_slice())
     }
 }
 
