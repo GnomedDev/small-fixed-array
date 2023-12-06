@@ -131,9 +131,7 @@ impl AsRef<std::ffi::OsStr> for FixedString {
 
 impl From<FixedString> for std::sync::Arc<str> {
     fn from(value: FixedString) -> Self {
-        let boxed_array = value.0.into_boxed_slice();
-        let boxed_str = unsafe { std::str::from_boxed_utf8_unchecked(boxed_array) };
-        std::sync::Arc::from(boxed_str)
+        std::sync::Arc::from(value.into_string())
     }
 }
 
