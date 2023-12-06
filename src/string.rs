@@ -117,6 +117,18 @@ impl From<FixedString> for String {
     }
 }
 
+impl AsRef<std::path::Path> for FixedString {
+    fn as_ref(&self) -> &std::path::Path {
+        self.as_str().as_ref()
+    }
+}
+
+impl AsRef<std::ffi::OsStr> for FixedString {
+    fn as_ref(&self) -> &std::ffi::OsStr {
+        self.as_str().as_ref()
+    }
+}
+
 impl From<FixedString> for std::sync::Arc<str> {
     fn from(value: FixedString) -> Self {
         let boxed_array = value.0.into_boxed_slice();
