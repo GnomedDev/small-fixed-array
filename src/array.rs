@@ -2,19 +2,27 @@ use std::{fmt::Debug, hash::Hash};
 
 use crate::non_empty_array::NonEmptyFixedArray;
 
-/// A fixed size array with length provided at creation with length denoted in [`u32`]
+/// A fixed size array with length provided at creation denoted in [`u32`]
+///
+/// See module level documentation for more information.
 #[derive(Clone)]
 pub struct FixedArray<T>(Option<NonEmptyFixedArray<T>>);
 
 impl<T> FixedArray<T> {
+    /// Alias to [`FixedArray::empty`].
+    #[must_use]
     pub fn new() -> Self {
         Self::empty()
     }
 
+    /// Creates a new, empty [`FixedArray`] that cannot be pushed to.
+    #[must_use]
     pub fn empty() -> Self {
         Self(None)
     }
 
+    /// Returns the length of the [`FixedArray`].
+    #[must_use]
     pub fn len(&self) -> u32 {
         self.0
             .as_ref()
@@ -22,20 +30,33 @@ impl<T> FixedArray<T> {
             .unwrap_or_default()
     }
 
+    /// Returns if the length is equal to 0.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_none()
     }
 
+    /// Converts [`FixedArray<T>`] to [`Vec<T>`], this operation should be cheap.
+    #[must_use]
+    pub fn into_vec(self) -> Vec<T> {
+        self.into()
+    }
+
+    /// Converts `&`[`FixedArray<T>`] to `&[T]`, this conversion can be performed by [`std::ops::Deref`].
+    #[must_use]
     pub fn as_slice(&self) -> &[T] {
         self
     }
 
-    pub fn into_vec(self) -> Vec<T> {
-        self.into()
+    /// Converts `&mut `[`FixedArray<T>`] to `&mut [T]`, this conversion can be performed by [`std::ops::DerefMut`].
+    #[must_use]
+    pub fn as_slice_mut(&mut self) -> &mut [T] {
+        self
     }
 }
 
 impl<T> Default for FixedArray<T> {
+    /// Creates a new, empty [`FixedArray`] that cannot be pushed to.
     fn default() -> Self {
         Self::empty()
     }
@@ -77,7 +98,7 @@ impl<T> std::ops::IndexMut<u32> for FixedArray<T> {
 
 impl<T: Hash> Hash for FixedArray<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.as_slice().hash(state)
+        self.as_slice().hash(state);
     }
 }
 

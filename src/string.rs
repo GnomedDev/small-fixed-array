@@ -2,19 +2,39 @@ use std::fmt::Write as _;
 
 use crate::FixedArray;
 
+/// A fixed size String with length provided at creation denoted in [`u32`].
+///
+/// See module level documentation for more information.
 #[derive(Default, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
 pub struct FixedString(FixedArray<u8>);
 
 impl FixedString {
+    #[must_use]
     pub fn new() -> Self {
         FixedString(FixedArray::default())
     }
 
+    /// Returns the length of the [`FixedString`].
+    #[must_use]
+    pub fn len(&self) -> u32 {
+        self.0.len()
+    }
+
+    /// Returns if the length is equal to 0.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Converts `&`[`FixedString`] to `&str`, this conversion can be performed by [`std::ops::Deref`].
+    #[must_use]
     pub fn as_str(&self) -> &str {
         self
     }
 
+    /// Converts [`FixedString`] to [`String`], this operation should be cheap.
+    #[must_use]
     pub fn into_string(self) -> String {
         self.into()
     }

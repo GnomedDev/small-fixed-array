@@ -25,10 +25,10 @@ impl<T> NonEmptyFixedArray<T> {
         unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len()) }
     }
 
-    /// Converts the NonEmptyFixedArray to it's original [`Box<T>`].
+    /// Converts the [`NonEmptyFixedArray`] to it's original [`Box<T>`].
     ///
     /// # Safety
-    /// `self` must never be used again, and it is highly recommended to wrap in ManuallyDrop before calling.
+    /// `self` must never be used again, and it is highly recommended to wrap in [`ManuallyDrop`] before calling.
     pub(crate) unsafe fn as_box(&mut self) -> Box<[T]> {
         let slice = self.as_mut_slice();
 
@@ -40,7 +40,7 @@ impl<T> NonEmptyFixedArray<T> {
 impl<T> From<Box<[T]>> for NonEmptyFixedArray<T> {
     fn from(boxed_array: Box<[T]>) -> Self {
         let len = NonZeroU32::new(boxed_array.len().try_into().unwrap()).unwrap();
-        let array_ptr = Box::into_raw(boxed_array) as *mut T;
+        let array_ptr = Box::into_raw(boxed_array).cast::<T>();
 
         NonEmptyFixedArray {
             ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
@@ -67,10 +67,8 @@ impl<T: Clone> Clone for NonEmptyFixedArray<T> {
 
 impl<T> Drop for NonEmptyFixedArray<T> {
     fn drop(&mut self) {
-        unsafe {
-            // SAFETY: We never use `self` again, and we are in the drop impl.
-            self.as_box();
-        }
+        // SAFETY: We never use `self` again, and we are in the drop impl.
+        unsafe { self.as_box() };
     }
 }
 
