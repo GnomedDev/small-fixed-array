@@ -170,6 +170,12 @@ impl<T> From<Vec<T>> for FixedArray<T> {
     }
 }
 
+impl<T> AsRef<[T]> for FixedArray<T> {
+    fn as_ref(&self) -> &[T] {
+        self
+    }
+}
+
 impl<T> From<FixedArray<T>> for std::sync::Arc<[T]> {
     fn from(value: FixedArray<T>) -> Self {
         std::sync::Arc::from(value.into_boxed_slice())

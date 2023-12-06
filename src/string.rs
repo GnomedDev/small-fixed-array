@@ -117,6 +117,12 @@ impl From<FixedString> for String {
     }
 }
 
+impl AsRef<str> for FixedString {
+    fn as_ref(&self) -> &str {
+        self
+    }
+}
+
 impl AsRef<std::path::Path> for FixedString {
     fn as_ref(&self) -> &std::path::Path {
         self.as_str().as_ref()
