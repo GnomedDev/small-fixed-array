@@ -5,7 +5,7 @@ use crate::{
     length::{SmallLen, ValidLength},
 };
 
-/// A fixed size String with length provided at creation denoted in [`u32`].
+/// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`SmallLen`].
 ///
 /// See module level documentation for more information.
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]

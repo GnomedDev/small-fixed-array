@@ -30,6 +30,11 @@ impl NonZero<u32> for NonZeroU32 {
     }
 }
 
+/// A sealed trait to represent valid lengths for a [`FixedArray`].
+///
+/// This is implemented on `u32` for non-16 bit platforms, and `u16` on all platforms.
+///
+/// [`FixedArray`]: `crate::array::FixedArray`
 pub trait ValidLength: sealed::Sealed + Sized + Default + Copy {
     type NonZero: NonZero<Self>;
 

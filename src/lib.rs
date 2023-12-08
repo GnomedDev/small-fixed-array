@@ -20,4 +20,5 @@ mod string;
 mod non_empty_array;
 
 pub use array::FixedArray;
+pub use length::ValidLength;
 pub use string::FixedString;

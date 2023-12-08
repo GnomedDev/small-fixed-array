@@ -5,7 +5,7 @@ use crate::{
     non_empty_array::NonEmptyFixedArray,
 };
 
-/// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default `u32`.
+/// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
 #[derive(Clone)]
