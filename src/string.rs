@@ -1,15 +1,17 @@
-use std::fmt::Write as _;
+use std::{cmp::PartialEq, fmt::Write as _, hash::Hash};
 
-use crate::FixedArray;
+use crate::{
+    array::FixedArray,
+    length::{SmallLen, ValidLength},
+};
 
 /// A fixed size String with length provided at creation denoted in [`u32`].
 ///
 /// See module level documentation for more information.
-#[derive(Default, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
-pub struct FixedString(FixedArray<u8>);
+pub struct FixedString<LenT: ValidLength = SmallLen>(FixedArray<u8, LenT>);
 
-impl FixedString {
+impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn new() -> Self {
         FixedString(FixedArray::default())
@@ -17,7 +19,7 @@ impl FixedString {
 
     /// Returns the length of the [`FixedString`].
     #[must_use]
-    pub fn len(&self) -> u32 {
+    pub fn len(&self) -> LenT {
         self.0.len()
     }
 
@@ -40,7 +42,7 @@ impl FixedString {
     }
 }
 
-impl std::ops::Deref for FixedString {
+impl<LenT: ValidLength> std::ops::Deref for FixedString<LenT> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -48,55 +50,81 @@ impl std::ops::Deref for FixedString {
     }
 }
 
-impl std::ops::DerefMut for FixedString {
+impl<LenT: ValidLength> std::ops::DerefMut for FixedString<LenT> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { std::str::from_utf8_unchecked_mut(&mut self.0) }
     }
 }
 
-impl std::cmp::PartialEq<&str> for FixedString {
+impl<LenT: ValidLength> Default for FixedString<LenT> {
+    fn default() -> Self {
+        Self(FixedArray::empty())
+    }
+}
+
+impl<LenT: ValidLength> Clone for FixedString<LenT> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<LenT: ValidLength> Hash for FixedString<LenT> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl<LenT: ValidLength> PartialEq for FixedString<LenT> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<LenT: ValidLength> Eq for FixedString<LenT> {}
+
+impl<LenT: ValidLength> PartialEq<&str> for FixedString<LenT> {
     fn eq(&self, other: &&str) -> bool {
         (&self.as_str()).eq(other)
     }
 }
 
-impl std::cmp::PartialEq<str> for FixedString {
+impl<LenT: ValidLength> PartialEq<str> for FixedString<LenT> {
     fn eq(&self, other: &str) -> bool {
         self.as_str().eq(other)
     }
 }
 
-impl std::cmp::PartialEq<FixedString> for &str {
-    fn eq(&self, other: &FixedString) -> bool {
+impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for &str {
+    fn eq(&self, other: &FixedString<LenT>) -> bool {
         other == self
     }
 }
 
-impl std::cmp::PartialEq<FixedString> for str {
-    fn eq(&self, other: &FixedString) -> bool {
+impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for str {
+    fn eq(&self, other: &FixedString<LenT>) -> bool {
         other == self
     }
 }
 
-impl std::cmp::PartialOrd for FixedString {
+impl<LenT: ValidLength> std::cmp::PartialOrd for FixedString<LenT> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl std::cmp::Ord for FixedString {
+impl<LenT: ValidLength> std::cmp::Ord for FixedString<LenT> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
-impl std::fmt::Display for FixedString {
+impl<LenT: ValidLength> std::fmt::Display for FixedString<LenT> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self)
     }
 }
 
-impl std::fmt::Debug for FixedString {
+impl<LenT: ValidLength> std::fmt::Debug for FixedString<LenT> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_char('"')?;
         f.write_str(self)?;
@@ -104,52 +132,52 @@ impl std::fmt::Debug for FixedString {
     }
 }
 
-impl From<String> for FixedString {
+impl<LenT: ValidLength> From<String> for FixedString<LenT> {
     fn from(value: String) -> Self {
         let value = value.into_bytes();
         Self(value.into())
     }
 }
 
-impl From<FixedString> for String {
-    fn from(value: FixedString) -> Self {
+impl<LenT: ValidLength> From<FixedString<LenT>> for String {
+    fn from(value: FixedString<LenT>) -> Self {
         unsafe { String::from_utf8_unchecked(value.0.into()) }
     }
 }
 
-impl AsRef<str> for FixedString {
+impl<LenT: ValidLength> AsRef<str> for FixedString<LenT> {
     fn as_ref(&self) -> &str {
         self
     }
 }
 
-impl AsRef<std::path::Path> for FixedString {
+impl<LenT: ValidLength> AsRef<std::path::Path> for FixedString<LenT> {
     fn as_ref(&self) -> &std::path::Path {
         self.as_str().as_ref()
     }
 }
 
-impl AsRef<std::ffi::OsStr> for FixedString {
+impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
     fn as_ref(&self) -> &std::ffi::OsStr {
         self.as_str().as_ref()
     }
 }
 
-impl From<FixedString> for std::sync::Arc<str> {
-    fn from(value: FixedString) -> Self {
+impl<LenT: ValidLength> From<FixedString<LenT>> for std::sync::Arc<str> {
+    fn from(value: FixedString<LenT>) -> Self {
         std::sync::Arc::from(value.into_string())
     }
 }
 
 #[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for FixedString {
+impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         String::deserialize(deserializer).map(Self::from)
     }
 }
 
 #[cfg(feature = "serde")]
-impl serde::Serialize for FixedString {
+impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.as_str().serialize(serializer)
     }

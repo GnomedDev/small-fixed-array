@@ -10,10 +10,11 @@
 //! ## Features
 //! - `serde`: Provides [`serde`] implementations for [`FixedArray`] and [`FixedString`].
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions)]
 
 mod array;
+mod length;
 mod string;
 // Internal only!
 mod non_empty_array;

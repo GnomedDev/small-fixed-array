@@ -1,18 +1,20 @@
-use std::{mem::ManuallyDrop, num::NonZeroU32, ptr::NonNull};
+use std::{mem::ManuallyDrop, ptr::NonNull};
+
+use crate::length::{NonZero, ValidLength};
 
 #[repr(packed)]
-pub(crate) struct NonEmptyFixedArray<T> {
+pub(crate) struct NonEmptyFixedArray<T, LenT: ValidLength> {
     ptr: NonNull<T>,
-    len: NonZeroU32,
+    len: LenT::NonZero,
 }
 
-impl<T> NonEmptyFixedArray<T> {
-    pub(crate) fn small_len(&self) -> u32 {
-        self.len.get()
+impl<T, LenT: ValidLength> NonEmptyFixedArray<T, LenT> {
+    pub(crate) fn small_len(&self) -> LenT {
+        self.len.expand()
     }
 
     fn len(&self) -> usize {
-        self.small_len() as usize
+        self.small_len().to_usize()
     }
 
     pub(crate) fn as_slice(&self) -> &[T] {
@@ -33,15 +35,16 @@ impl<T> NonEmptyFixedArray<T> {
         let slice = self.as_mut_slice();
 
         // SAFETY: `self` has been derived from `Box<[T]>`
-        unsafe { Box::from_raw(slice as *mut [T]) }
+        unsafe { Box::from_raw(slice) }
     }
 }
 
-impl<T> From<Box<[T]>> for NonEmptyFixedArray<T> {
+impl<T, LenT: ValidLength> From<Box<[T]>> for NonEmptyFixedArray<T, LenT> {
     fn from(boxed_array: Box<[T]>) -> Self {
-        let len = NonZeroU32::new(boxed_array.len().try_into().unwrap()).unwrap();
-        let array_ptr = Box::into_raw(boxed_array).cast::<T>();
+        let len = LenT::from_usize(boxed_array.len())
+            .expect("array size must fit into length type provided");
 
+        let array_ptr = Box::into_raw(boxed_array).cast::<T>();
         NonEmptyFixedArray {
             ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
             len,
@@ -49,8 +52,8 @@ impl<T> From<Box<[T]>> for NonEmptyFixedArray<T> {
     }
 }
 
-impl<T> From<NonEmptyFixedArray<T>> for Box<[T]> {
-    fn from(value: NonEmptyFixedArray<T>) -> Self {
+impl<T, LenT: ValidLength> From<NonEmptyFixedArray<T, LenT>> for Box<[T]> {
+    fn from(value: NonEmptyFixedArray<T, LenT>) -> Self {
         let mut value = ManuallyDrop::new(value);
         unsafe {
             // SAFETY: We don't use value again, and it is ManuallyDrop.
@@ -59,18 +62,18 @@ impl<T> From<NonEmptyFixedArray<T>> for Box<[T]> {
     }
 }
 
-impl<T: Clone> Clone for NonEmptyFixedArray<T> {
+impl<T: Clone, LenT: ValidLength> Clone for NonEmptyFixedArray<T, LenT> {
     fn clone(&self) -> Self {
         self.as_slice().to_vec().into_boxed_slice().into()
     }
 }
 
-impl<T> Drop for NonEmptyFixedArray<T> {
+impl<T, LenT: ValidLength> Drop for NonEmptyFixedArray<T, LenT> {
     fn drop(&mut self) {
         // SAFETY: We never use `self` again, and we are in the drop impl.
         unsafe { self.as_box() };
     }
 }
 
-unsafe impl<T: Send> Send for NonEmptyFixedArray<T> {}
-unsafe impl<T: Sync> Sync for NonEmptyFixedArray<T> {}
+unsafe impl<T: Send, LenT: ValidLength> Send for NonEmptyFixedArray<T, LenT> {}
+unsafe impl<T: Sync, LenT: ValidLength> Sync for NonEmptyFixedArray<T, LenT> {}
