@@ -90,26 +90,39 @@ impl<T, LenT: ValidLength> std::ops::DerefMut for FixedArray<T, LenT> {
     }
 }
 
+impl<T, LenT: ValidLength> std::ops::Index<usize> for FixedArray<T, LenT> {
+    type Output = T;
+    fn index(&self, index: usize) -> &Self::Output {
+        let inner: &[T] = self;
+        &inner[index]
+    }
+}
+
 impl<T> std::ops::Index<u32> for FixedArray<T, u32> {
     type Output = T;
     fn index(&self, index: u32) -> &Self::Output {
-        let inner: &[T] = self;
         let index: usize = index
             .try_into()
             .expect("we are indexing with a u32, and storing len as a u32");
 
-        &inner[index]
+        &self[index]
+    }
+}
+
+impl<T, LenT: ValidLength> std::ops::IndexMut<usize> for FixedArray<T, LenT> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let inner: &mut [T] = self;
+        &mut inner[index]
     }
 }
 
 impl<T> std::ops::IndexMut<u32> for FixedArray<T, u32> {
     fn index_mut(&mut self, index: u32) -> &mut Self::Output {
-        let inner: &mut [T] = self;
         let index: usize = index
             .try_into()
             .expect("we are indexing with a u32, and storing len as a u32");
 
-        &mut inner[index]
+        &mut self[index]
     }
 }
 
