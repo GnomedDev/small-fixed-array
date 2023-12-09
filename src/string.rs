@@ -19,7 +19,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
 
     /// Returns the length of the [`FixedString`].
     #[must_use]
-    pub fn len(&self) -> LenT {
+    pub fn len(&self) -> u32 {
         self.0.len()
     }
 

@@ -39,6 +39,7 @@ pub trait ValidLength: sealed::Sealed + Sized + Default + Copy {
     type NonZero: NonZero<Self>;
 
     fn from_usize(val: usize) -> Option<Self::NonZero>;
+    fn to_u32(self) -> u32;
     fn to_usize(self) -> usize;
 }
 
@@ -47,6 +48,10 @@ impl ValidLength for u8 {
 
     fn from_usize(val: usize) -> Option<Self::NonZero> {
         val.try_into().ok().and_then(Self::NonZero::new)
+    }
+
+    fn to_u32(self) -> u32 {
+        self.into()
     }
 
     fn to_usize(self) -> usize {
@@ -61,6 +66,10 @@ impl ValidLength for u16 {
         val.try_into().ok().and_then(Self::NonZero::new)
     }
 
+    fn to_u32(self) -> u32 {
+        self.into()
+    }
+
     fn to_usize(self) -> usize {
         self.into()
     }
@@ -72,6 +81,10 @@ impl ValidLength for u32 {
 
     fn from_usize(val: usize) -> Option<Self::NonZero> {
         val.try_into().ok().and_then(Self::NonZero::new)
+    }
+
+    fn to_u32(self) -> u32 {
+        self
     }
 
     fn to_usize(self) -> usize {

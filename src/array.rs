@@ -24,13 +24,17 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
         Self(None)
     }
 
-    /// Returns the length of the [`FixedArray`].
-    #[must_use]
-    pub fn len(&self) -> LenT {
+    pub(crate) fn small_len(&self) -> LenT {
         self.0
             .as_ref()
             .map(NonEmptyFixedArray::small_len)
             .unwrap_or_default()
+    }
+
+    /// Returns the length of the [`FixedArray`].
+    #[must_use]
+    pub fn len(&self) -> u32 {
+        self.small_len().to_u32()
     }
 
     /// Returns if the length is equal to 0.
@@ -98,31 +102,10 @@ impl<T, LenT: ValidLength> std::ops::Index<usize> for FixedArray<T, LenT> {
     }
 }
 
-impl<T> std::ops::Index<u32> for FixedArray<T, u32> {
-    type Output = T;
-    fn index(&self, index: u32) -> &Self::Output {
-        let index: usize = index
-            .try_into()
-            .expect("we are indexing with a u32, and storing len as a u32");
-
-        &self[index]
-    }
-}
-
 impl<T, LenT: ValidLength> std::ops::IndexMut<usize> for FixedArray<T, LenT> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         let inner: &mut [T] = self;
         &mut inner[index]
-    }
-}
-
-impl<T> std::ops::IndexMut<u32> for FixedArray<T, u32> {
-    fn index_mut(&mut self, index: u32) -> &mut Self::Output {
-        let index: usize = index
-            .try_into()
-            .expect("we are indexing with a u32, and storing len as a u32");
-
-        &mut self[index]
     }
 }
 
