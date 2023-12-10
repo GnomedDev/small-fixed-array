@@ -130,8 +130,8 @@ impl<T: Debug, LenT: ValidLength> Debug for FixedArray<T, LenT> {
 }
 
 impl<T, LenT: ValidLength> IntoIterator for FixedArray<T, LenT> {
-    type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
+    type Item = <Vec<T> as IntoIterator>::Item;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.into_vec().into_iter()
@@ -139,11 +139,20 @@ impl<T, LenT: ValidLength> IntoIterator for FixedArray<T, LenT> {
 }
 
 impl<'a, T> IntoIterator for &'a FixedArray<T> {
-    type Item = &'a T;
-    type IntoIter = std::slice::Iter<'a, T>;
+    type Item = <&'a [T] as IntoIterator>::Item;
+    type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
         self.as_slice().iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut FixedArray<T> {
+    type Item = <&'a mut [T] as IntoIterator>::Item;
+    type IntoIter = <&'a mut [T] as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_slice_mut().iter_mut()
     }
 }
 
