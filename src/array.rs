@@ -35,7 +35,7 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Returns the length of the [`FixedArray`].
     #[must_use]
     pub fn len(&self) -> u32 {
-        self.small_len().to_u32()
+        self.small_len().into()
     }
 
     /// Returns if the length is equal to 0.
@@ -176,7 +176,7 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
 }
 
 impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
-    type Error = InvalidLength;
+    type Error = InvalidLength<T>;
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
         match NonEmptyFixedArray::try_from(boxed_array) {
             Ok(arr) => Ok(Self(Some(arr))),
@@ -187,17 +187,19 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
 }
 
 impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
-    fn from(mut value: Vec<T>) -> Self {
-        if value.len() >= LenT::MAX {
-            let max_len = LenT::MAX;
-            error!("Truncated Vec<T> to fit into max len {max_len}");
-            value.truncate(max_len);
-        }
+    fn from(value: Vec<T>) -> Self {
+        match value.into_boxed_slice().try_into() {
+            Ok(arr) => arr,
+            Err(err) => {
+                #[allow(unused_variables)]
+                let (len, backtrace) = (LenT::MAX, &err.backtrace);
+                error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
 
-        value
-            .into_boxed_slice()
-            .try_into()
-            .expect("array can fit in size as just truncated")
+                let mut value = Vec::from(err.get_inner());
+                value.truncate(LenT::MAX);
+                Self::from(value)
+            }
+        }
     }
 }
 

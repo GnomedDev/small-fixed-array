@@ -40,9 +40,9 @@ impl<T, LenT: ValidLength> NonEmptyFixedArray<T, LenT> {
 }
 
 impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for NonEmptyFixedArray<T, LenT> {
-    type Error = Option<InvalidLength>;
+    type Error = Option<InvalidLength<T>>;
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
-        let Some(len) = LenT::from_usize(boxed_array.len())? else {
+        let Some((len, boxed_array)) = LenT::from_usize(boxed_array)? else {
             return Err(None);
         };
 
@@ -66,7 +66,9 @@ impl<T, LenT: ValidLength> From<NonEmptyFixedArray<T, LenT>> for Box<[T]> {
 
 impl<T: Clone, LenT: ValidLength> Clone for NonEmptyFixedArray<T, LenT> {
     fn clone(&self) -> Self {
-        Box::<[T]>::from(self.as_slice()).try_into().expect("Length of array can't change when cloning")
+        Box::<[T]>::from(self.as_slice())
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length of array can't change when cloning"))
     }
 }
 

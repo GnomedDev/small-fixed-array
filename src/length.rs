@@ -9,50 +9,70 @@ mod sealed {
 }
 
 #[derive(Debug)]
-pub struct InvalidLength {
+pub struct InvalidLength<T> {
     pub(crate) backtrace: std::backtrace::Backtrace,
     type_name: &'static str,
-    length: usize,
+    original: Box<[T]>,
 }
 
-impl InvalidLength {
+impl<T> InvalidLength<T> {
     #[track_caller]
-    fn new(type_name: &'static str, length: usize) -> Self {
+    fn new(type_name: &'static str, original: Box<[T]>) -> Self {
         Self {
             backtrace: std::backtrace::Backtrace::capture(),
             type_name,
-            length,
+            original,
         }
+    }
+
+    /// Returns the original Box<[T]> that could not be converted from.
+    pub fn get_inner(self) -> Box<[T]> {
+        self.original
     }
 }
 
-impl std::fmt::Display for InvalidLength {
+impl<T> std::fmt::Display for InvalidLength<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "Cannot fit {} into {}:\n\n{}",
-            self.length, self.type_name, self.backtrace
+            self.original.len(),
+            self.type_name,
+            self.backtrace
         )
     }
 }
 
-pub trait NonZero<T: sealed::Sealed + Copy>: Copy {
+pub trait NonZero<T: sealed::Sealed>: Copy {
+    fn new(val: T) -> Option<Self>;
     fn expand(self) -> T;
 }
 
 impl NonZero<u8> for NonZeroU8 {
+    fn new(val: u8) -> Option<Self> {
+        Self::new(val)
+    }
+
     fn expand(self) -> u8 {
         self.get()
     }
 }
 
 impl NonZero<u16> for NonZeroU16 {
+    fn new(val: u16) -> Option<Self> {
+        Self::new(val)
+    }
+
     fn expand(self) -> u16 {
         self.get()
     }
 }
 
 impl NonZero<u32> for NonZeroU32 {
+    fn new(val: u32) -> Option<Self> {
+        Self::new(val)
+    }
+
     fn expand(self) -> u32 {
         self.get()
     }
@@ -63,15 +83,22 @@ impl NonZero<u32> for NonZeroU32 {
 /// This is implemented on `u32` for non-16 bit platforms, and `u16` on all platforms.
 ///
 /// [`FixedArray`]: `crate::array::FixedArray`
-pub trait ValidLength: sealed::Sealed + Sized + Default + Copy {
+pub trait ValidLength: sealed::Sealed + Default + Copy + TryFrom<usize> + Into<u32> {
     const MAX: usize;
     type NonZero: NonZero<Self>;
 
     /// # Errors
     ///
-    /// Errors if the usize cannot fit into Self.
-    fn from_usize(val: usize) -> Result<Option<Self::NonZero>, InvalidLength>;
-    fn to_u32(self) -> u32;
+    /// Errors if the val's length cannot fit into Self.
+    #[allow(clippy::type_complexity)]
+    fn from_usize<T>(val: Box<[T]>) -> Result<Option<(Self::NonZero, Box<[T]>)>, InvalidLength<T>> {
+        match val.len().try_into().map(Self::NonZero::new) {
+            Ok(None) => Ok(None),
+            Ok(Some(len)) => Ok(Some((len, val))),
+            Err(_) => Err(InvalidLength::new(std::any::type_name::<Self>(), val)),
+        }
+    }
+
     fn to_usize(self) -> usize;
 }
 
@@ -79,16 +106,6 @@ impl ValidLength for u8 {
     #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
     const MAX: usize = u8::MAX as usize;
     type NonZero = NonZeroU8;
-
-    fn from_usize(val: usize) -> Result<Option<Self::NonZero>, InvalidLength> {
-        val.try_into()
-            .map(Self::NonZero::new)
-            .map_err(|_| InvalidLength::new("u8", val))
-    }
-
-    fn to_u32(self) -> u32 {
-        self.into()
-    }
 
     fn to_usize(self) -> usize {
         self.into()
@@ -100,16 +117,6 @@ impl ValidLength for u16 {
     const MAX: usize = u16::MAX as usize;
     type NonZero = NonZeroU16;
 
-    fn from_usize(val: usize) -> Result<Option<Self::NonZero>, InvalidLength> {
-        val.try_into()
-            .map(Self::NonZero::new)
-            .map_err(|_| InvalidLength::new("u16", val))
-    }
-
-    fn to_u32(self) -> u32 {
-        self.into()
-    }
-
     fn to_usize(self) -> usize {
         self.into()
     }
@@ -120,16 +127,6 @@ impl ValidLength for u32 {
     #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
     const MAX: usize = u32::MAX as usize;
     type NonZero = NonZeroU32;
-
-    fn from_usize(val: usize) -> Result<Option<Self::NonZero>, InvalidLength> {
-        val.try_into()
-            .map(Self::NonZero::new)
-            .map_err(|_| InvalidLength::new("u32", val))
-    }
-
-    fn to_u32(self) -> u32 {
-        self
-    }
 
     fn to_usize(self) -> usize {
         self.try_into()
