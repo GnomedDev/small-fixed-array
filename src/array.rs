@@ -138,7 +138,7 @@ impl<T, LenT: ValidLength> IntoIterator for FixedArray<T, LenT> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a FixedArray<T> {
+impl<'a, T, LenT: ValidLength> IntoIterator for &'a FixedArray<T, LenT> {
     type Item = <&'a [T] as IntoIterator>::Item;
     type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
 
@@ -147,7 +147,7 @@ impl<'a, T> IntoIterator for &'a FixedArray<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a mut FixedArray<T> {
+impl<'a, T, LenT: ValidLength> IntoIterator for &'a mut FixedArray<T, LenT> {
     type Item = <&'a mut [T] as IntoIterator>::Item;
     type IntoIter = <&'a mut [T] as IntoIterator>::IntoIter;
 
