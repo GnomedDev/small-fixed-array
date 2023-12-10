@@ -1,6 +1,6 @@
 use std::{mem::ManuallyDrop, ptr::NonNull};
 
-use crate::length::{NonZero, ValidLength};
+use crate::length::{InvalidLength, NonZero, ValidLength};
 
 #[repr(packed)]
 pub(crate) struct NonEmptyFixedArray<T, LenT: ValidLength> {
@@ -39,16 +39,18 @@ impl<T, LenT: ValidLength> NonEmptyFixedArray<T, LenT> {
     }
 }
 
-impl<T, LenT: ValidLength> From<Box<[T]>> for NonEmptyFixedArray<T, LenT> {
-    fn from(boxed_array: Box<[T]>) -> Self {
-        let len = LenT::from_usize(boxed_array.len())
-            .expect("array size must fit into length type provided");
+impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for NonEmptyFixedArray<T, LenT> {
+    type Error = Option<InvalidLength>;
+    fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
+        let Some(len) = LenT::from_usize(boxed_array.len())? else {
+            return Err(None);
+        };
 
         let array_ptr = Box::into_raw(boxed_array).cast::<T>();
-        NonEmptyFixedArray {
+        Ok(NonEmptyFixedArray {
             ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
             len,
-        }
+        })
     }
 }
 
@@ -64,7 +66,7 @@ impl<T, LenT: ValidLength> From<NonEmptyFixedArray<T, LenT>> for Box<[T]> {
 
 impl<T: Clone, LenT: ValidLength> Clone for NonEmptyFixedArray<T, LenT> {
     fn clone(&self) -> Self {
-        self.as_slice().to_vec().into_boxed_slice().into()
+        Box::<[T]>::from(self.as_slice()).try_into().expect("Length of array can't change when cloning")
     }
 }
 

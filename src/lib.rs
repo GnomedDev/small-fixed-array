@@ -12,9 +12,14 @@
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
 #![warn(clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions)]
+#![cfg_attr(
+    not(any(feature = "log_using_log", feature = "log_using_tracing")),
+    deprecated = "Please pick a logging framework using the `log_using_log` or `log_using_tracing` features!"
+)]
 
 mod array;
 mod length;
+mod logging;
 mod string;
 // Internal only!
 mod non_empty_array;

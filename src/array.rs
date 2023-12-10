@@ -1,7 +1,8 @@
 use std::{fmt::Debug, hash::Hash};
 
 use crate::{
-    length::{SmallLen, ValidLength},
+    length::{InvalidLength, SmallLen, ValidLength},
+    logging::error,
     non_empty_array::NonEmptyFixedArray,
 };
 
@@ -174,15 +175,29 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
     }
 }
 
-impl<T, LenT: ValidLength> From<Box<[T]>> for FixedArray<T, LenT> {
-    fn from(boxed_array: Box<[T]>) -> Self {
-        Self((!boxed_array.is_empty()).then(|| NonEmptyFixedArray::from(boxed_array)))
+impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
+    type Error = InvalidLength;
+    fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
+        match NonEmptyFixedArray::try_from(boxed_array) {
+            Ok(arr) => Ok(Self(Some(arr))),
+            Err(None) => Ok(Self(None)),
+            Err(Some(err)) => Err(err),
+        }
     }
 }
 
 impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
-    fn from(value: Vec<T>) -> Self {
-        Self::from(value.into_boxed_slice())
+    fn from(mut value: Vec<T>) -> Self {
+        if value.len() >= LenT::MAX {
+            let max_len = LenT::MAX;
+            error!("Truncated Vec<T> to fit into max len {max_len}");
+            value.truncate(max_len);
+        }
+
+        value
+            .into_boxed_slice()
+            .try_into()
+            .expect("array can fit in size as just truncated")
     }
 }
 
@@ -205,7 +220,7 @@ where
     LenT: ValidLength,
 {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Box::<[T]>::deserialize(deserializer).map(Self::from)
+        Vec::<T>::deserialize(deserializer).map(Self::from)
     }
 }
 
