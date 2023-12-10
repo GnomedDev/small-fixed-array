@@ -82,9 +82,15 @@ impl<LenT: ValidLength> PartialEq for FixedString<LenT> {
 
 impl<LenT: ValidLength> Eq for FixedString<LenT> {}
 
+impl<LenT: ValidLength> PartialEq<String> for FixedString<LenT> {
+    fn eq(&self, other: &String) -> bool {
+        self.as_str().eq(other)
+    }
+}
+
 impl<LenT: ValidLength> PartialEq<&str> for FixedString<LenT> {
     fn eq(&self, other: &&str) -> bool {
-        (&self.as_str()).eq(other)
+        self.as_str().eq(*other)
     }
 }
 
@@ -101,6 +107,12 @@ impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for &str {
 }
 
 impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for str {
+    fn eq(&self, other: &FixedString<LenT>) -> bool {
+        other == self
+    }
+}
+
+impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for String {
     fn eq(&self, other: &FixedString<LenT>) -> bool {
         other == self
     }
