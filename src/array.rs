@@ -8,6 +8,7 @@ use crate::{
 /// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
+#[repr(packed)]
 pub struct FixedArray<T, LenT: ValidLength = SmallLen> {
     ptr: NonNull<T>,
     len: LenT,
