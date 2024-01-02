@@ -1,16 +1,17 @@
-use std::{fmt::Debug, hash::Hash};
+use std::{fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
 use crate::{
     length::{InvalidLength, SmallLen, ValidLength},
     logging::error,
-    non_empty_array::NonEmptyFixedArray,
 };
 
 /// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
-#[derive(Clone)]
-pub struct FixedArray<T, LenT: ValidLength = SmallLen>(Option<NonEmptyFixedArray<T, LenT>>);
+pub struct FixedArray<T, LenT: ValidLength = SmallLen> {
+    ptr: NonNull<T>,
+    len: LenT,
+}
 
 impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Alias to [`FixedArray::empty`].
@@ -22,14 +23,14 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Creates a new, empty [`FixedArray`] that cannot be pushed to.
     #[must_use]
     pub fn empty() -> Self {
-        Self(None)
+        Self {
+            ptr: NonNull::dangling(),
+            len: LenT::ZERO,
+        }
     }
 
     pub(crate) fn small_len(&self) -> LenT {
-        self.0
-            .as_ref()
-            .map(NonEmptyFixedArray::small_len)
-            .unwrap_or_default()
+        self.len
     }
 
     /// Returns the length of the [`FixedArray`].
@@ -41,7 +42,7 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Returns if the length is equal to 0.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.is_none()
+        self.len() == 0
     }
 
     /// Converts [`FixedArray<T>`] to [`Vec<T>`], this operation should be cheap.
@@ -67,6 +68,42 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     pub fn as_slice_mut(&mut self) -> &mut [T] {
         self
     }
+
+    /// Converts the [`FixedArray`] to it's original [`Box<T>`].
+    ///
+    /// # Safety
+    /// `self` must never be used again, and it is highly recommended to wrap in [`ManuallyDrop`] before calling.
+    pub(crate) unsafe fn as_box(&mut self) -> Box<[T]> {
+        let slice = self.as_slice_mut();
+
+        // SAFETY: `self` has been derived from `Box<[T]>`
+        unsafe { Box::from_raw(slice) }
+    }
+}
+
+unsafe impl<T: Send, LenT: ValidLength> Send for FixedArray<T, LenT> {}
+unsafe impl<T: Sync, LenT: ValidLength> Sync for FixedArray<T, LenT> {}
+
+impl<T, LenT: ValidLength> std::ops::Deref for FixedArray<T, LenT> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.small_len().to_usize()) }
+    }
+}
+
+impl<T, LenT: ValidLength> std::ops::DerefMut for FixedArray<T, LenT> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
+        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.small_len().to_usize()) }
+    }
+}
+
+impl<T, LenT: ValidLength> Drop for FixedArray<T, LenT> {
+    fn drop(&mut self) {
+        // SAFETY: We never use `self` again, and we are in the drop impl.
+        unsafe { self.as_box() };
+    }
 }
 
 impl<T, LenT: ValidLength> Default for FixedArray<T, LenT> {
@@ -76,22 +113,11 @@ impl<T, LenT: ValidLength> Default for FixedArray<T, LenT> {
     }
 }
 
-impl<T, LenT: ValidLength> std::ops::Deref for FixedArray<T, LenT> {
-    type Target = [T];
-    fn deref(&self) -> &Self::Target {
-        self.0
-            .as_ref()
-            .map(NonEmptyFixedArray::as_slice)
-            .unwrap_or_default()
-    }
-}
-
-impl<T, LenT: ValidLength> std::ops::DerefMut for FixedArray<T, LenT> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.0
-            .as_mut()
-            .map(NonEmptyFixedArray::as_mut_slice)
-            .unwrap_or_default()
+impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
+    fn clone(&self) -> Self {
+        Box::<[T]>::from(self.as_slice())
+            .try_into()
+            .unwrap_or_else(|_| panic!("Length of array can't change when cloning"))
     }
 }
 
@@ -165,7 +191,10 @@ impl<T, LenT: ValidLength> std::iter::FromIterator<T> for FixedArray<T, LenT> {
 
 impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Box<[T]> {
     fn from(value: FixedArray<T, LenT>) -> Self {
-        value.0.map(Box::from).unwrap_or_default()
+        let mut value = ManuallyDrop::new(value);
+
+        // SAFETY: We don't use value again, and it is ManuallyDrop.
+        unsafe { value.as_box() }
     }
 }
 
@@ -178,11 +207,13 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
 impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     type Error = InvalidLength<T>;
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
-        match NonEmptyFixedArray::try_from(boxed_array) {
-            Ok(arr) => Ok(Self(Some(arr))),
-            Err(None) => Ok(Self(None)),
-            Err(Some(err)) => Err(err),
-        }
+        let (len, boxed_array) = LenT::from_usize(boxed_array)?;
+        let array_ptr = Box::into_raw(boxed_array).cast::<T>();
+
+        Ok(Self {
+            ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
+            len,
+        })
     }
 }
 
