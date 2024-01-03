@@ -5,7 +5,7 @@ use crate::{
     length::{SmallLen, ValidLength},
 };
 
-/// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`SmallLen`].
+/// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
@@ -144,6 +144,7 @@ impl<LenT: ValidLength> std::fmt::Debug for FixedString<LenT> {
     }
 }
 
+#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
 impl<LenT: ValidLength> From<String> for FixedString<LenT> {
     fn from(value: String) -> Self {
         let value = value.into_bytes();

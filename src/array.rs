@@ -1,9 +1,6 @@
 use std::{fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
-use crate::{
-    length::{InvalidLength, SmallLen, ValidLength},
-    logging::error,
-};
+use crate::length::{InvalidLength, SmallLen, ValidLength};
 
 /// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
@@ -184,6 +181,7 @@ impl<'a, T, LenT: ValidLength> IntoIterator for &'a mut FixedArray<T, LenT> {
     }
 }
 
+#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
 impl<T, LenT: ValidLength> std::iter::FromIterator<T> for FixedArray<T, LenT> {
     fn from_iter<Iter: IntoIterator<Item = T>>(iter: Iter) -> Self {
         Vec::from_iter(iter).into()
@@ -218,14 +216,14 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     }
 }
 
+#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
 impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
     fn from(value: Vec<T>) -> Self {
         match value.into_boxed_slice().try_into() {
             Ok(arr) => arr,
             Err(err) => {
-                #[allow(unused_variables)]
                 let (len, backtrace) = (LenT::MAX, &err.backtrace);
-                error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
+                crate::logging::error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
 
                 let mut value = Vec::from(err.get_inner());
                 value.truncate(LenT::MAX);
