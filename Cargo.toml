@@ -17,3 +17,7 @@ typesize = ["dep:typesize"]
 serde = ["dep:serde"]
 log_using_tracing = ["dep:tracing"]
 log_using_log = ["dep:log"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
