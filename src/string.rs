@@ -182,7 +182,10 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for std::sync::Arc<str> {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(all(
+    feature = "serde",
+    any(feature = "log_using_log", feature = "log_using_tracing")
+))]
 impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         String::deserialize(deserializer).map(Self::from)

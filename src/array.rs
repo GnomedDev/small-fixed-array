@@ -245,7 +245,10 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for std::sync::Arc<[T]> {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(all(
+    feature = "serde",
+    any(feature = "log_using_log", feature = "log_using_tracing")
+))]
 impl<'de, T, LenT> serde::Deserialize<'de> for FixedArray<T, LenT>
 where
     T: serde::Deserialize<'de>,
