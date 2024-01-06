@@ -216,10 +216,20 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     }
 }
 
+#[inline(never)]
+#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
+fn log_truncation(backtrace: &std::backtrace::Backtrace, len: usize) {
+    crate::logging::error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
+}
+
 #[cold]
 #[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-fn log_truncation(len: usize, backtrace: &std::backtrace::Backtrace) {
-    crate::logging::error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
+fn truncate_vec<T>(err: InvalidLength<T>, max_len: usize) -> Vec<T> {
+    log_truncation(&err.backtrace, max_len);
+
+    let mut value = Vec::from(err.get_inner());
+    value.truncate(max_len);
+    value
 }
 
 #[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
@@ -227,13 +237,7 @@ impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
     fn from(value: Vec<T>) -> Self {
         match value.into_boxed_slice().try_into() {
             Ok(arr) => arr,
-            Err(err) => {
-                log_truncation(LenT::MAX, &err.backtrace);
-
-                let mut value = Vec::from(err.get_inner());
-                value.truncate(LenT::MAX);
-                Self::from(value)
-            }
+            Err(err) => Self::from(truncate_vec(err, LenT::MAX)),
         }
     }
 }
