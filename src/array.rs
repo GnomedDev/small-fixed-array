@@ -2,6 +2,13 @@ use std::{borrow::Cow, fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
 use crate::length::{InvalidLength, NonZero, SmallLen, ValidLength};
 
+#[cold]
+fn truncate_vec<T>(err: InvalidLength<T>, max_len: usize) -> Vec<T> {
+    let mut value = Vec::from(err.get_inner());
+    value.truncate(max_len);
+    value
+}
+
 /// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
@@ -46,6 +53,15 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
         Self {
             ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
             len,
+        }
+    }
+
+    /// Converts [`Vec<T>`] into [`FixedArray<T>`] while truncating the vector if above the maximum size of `LenT`.
+    #[must_use]
+    pub fn from_vec_trunc(vec: Vec<T>) -> Self {
+        match vec.into_boxed_slice().try_into() {
+            Ok(v) => v,
+            Err(err) => Self::from_vec_trunc(truncate_vec(err, LenT::MAX.to_usize())),
         }
     }
 
@@ -208,13 +224,6 @@ impl<'a, T, LenT: ValidLength> IntoIterator for &'a mut FixedArray<T, LenT> {
     }
 }
 
-#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-impl<T, LenT: ValidLength> std::iter::FromIterator<T> for FixedArray<T, LenT> {
-    fn from_iter<Iter: IntoIterator<Item = T>>(iter: Iter) -> Self {
-        Vec::from_iter(iter).into()
-    }
-}
-
 impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Box<[T]> {
     fn from(value: FixedArray<T, LenT>) -> Self {
         let mut value = ManuallyDrop::new(value);
@@ -255,32 +264,6 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     }
 }
 
-#[inline(never)]
-#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-fn log_truncation(backtrace: &std::backtrace::Backtrace, len: usize) {
-    crate::logging::error!("Truncating Vec<T> to fit into max len {len}\n{backtrace}");
-}
-
-#[cold]
-#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-fn truncate_vec<T>(err: InvalidLength<T>, max_len: usize) -> Vec<T> {
-    log_truncation(&err.backtrace, max_len);
-
-    let mut value = Vec::from(err.get_inner());
-    value.truncate(max_len);
-    value
-}
-
-#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
-    fn from(value: Vec<T>) -> Self {
-        match value.into_boxed_slice().try_into() {
-            Ok(arr) => arr,
-            Err(err) => Self::from(truncate_vec(err, LenT::MAX.to_usize())),
-        }
-    }
-}
-
 impl<T, LenT: ValidLength> AsRef<[T]> for FixedArray<T, LenT> {
     fn as_ref(&self) -> &[T] {
         self
@@ -293,17 +276,14 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for std::sync::Arc<[T]> {
     }
 }
 
-#[cfg(all(
-    feature = "serde",
-    any(feature = "log_using_log", feature = "log_using_tracing")
-))]
+#[cfg(feature = "serde")]
 impl<'de, T, LenT> serde::Deserialize<'de> for FixedArray<T, LenT>
 where
     T: serde::Deserialize<'de>,
     LenT: ValidLength,
 {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Vec::<T>::deserialize(deserializer).map(Self::from)
+        Self::try_from(Box::<[T]>::deserialize(deserializer)?).map_err(serde::de::Error::custom)
     }
 }
 
