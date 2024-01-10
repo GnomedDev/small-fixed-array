@@ -10,11 +10,6 @@
 //! ## Features
 //! - `serde`: Provides [`serde`] implementations for [`FixedArray`] and [`FixedString`].
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
-//!
-//! ## From implementations
-//! [`From<Vec<T>>`]` for `[`FixedArray`] and [`From<String>`]` for `[`FixedString`] are only implemented if one of
-//! `log_using_log` or `log_using_tracing` are enabled, as the implementations will `error` level log
-//! if the Vec/String's length is too high for the provided `LenT` generic.
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![warn(clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions)]
@@ -22,9 +17,10 @@
 mod array;
 mod inline;
 mod length;
-mod logging;
 mod string;
+mod truncating_into;
 
 pub use array::FixedArray;
 pub use length::ValidLength;
 pub use string::FixedString;
+pub use truncating_into::TruncatingInto;

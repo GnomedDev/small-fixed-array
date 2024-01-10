@@ -12,6 +12,19 @@ enum FixedStringRepr<LenT: ValidLength> {
     Inline(InlineString<LenT::InlineStrRepr>),
 }
 
+#[cold]
+fn truncate_string(err: InvalidStrLength, max_len: usize) -> String {
+    let mut value = String::from(err.get_inner());
+    for len in (0..=max_len).rev() {
+        if value.is_char_boundary(len) {
+            value.truncate(len);
+            return value;
+        }
+    }
+
+    unreachable!("Len 0 is a char boundary")
+}
+
 /// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
@@ -22,6 +35,36 @@ impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn new() -> Self {
         FixedString(FixedStringRepr::Inline(InlineString::from_str("")))
+    }
+
+    /// Converts a `&str` into a [`FixedString`], allocating if the value cannot fit "inline".
+    ///
+    /// This method will be more efficent if you would otherwise clone a [`String`] to convert into [`FixedString`],
+    /// but should not be used in the case that [`String`] ownership could be transfered without reallocation.
+    ///
+    /// "Inline" refers to Small String Optimisation which allows for Strings with less than 9 to 11 characters
+    /// to be stored without allocation, saving a pointer size and an allocation.
+    ///
+    /// See [`Self::from_string_trunc`] for truncation behaviour.
+    #[must_use]
+    pub fn from_str_trunc(val: &str) -> Self {
+        if val.len() <= get_heap_threshold::<LenT>() {
+            return Self(FixedStringRepr::Inline(InlineString::from_str(val)));
+        }
+
+        Self::from_string_trunc(val.to_owned())
+    }
+
+    /// Converts a [`String`] into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
+    ///
+    /// This allows for infallible conversion, but may be lossy in the case of a value above `LenT`'s max.
+    /// For lossless fallible conversion, convert to [`Box<str>`] using [`String::into_boxed_str`] and use [`TryFrom`].
+    #[must_use]
+    pub fn from_string_trunc(str: String) -> Self {
+        match str.into_boxed_str().try_into() {
+            Ok(val) => val,
+            Err(err) => Self::from_string_trunc(truncate_string(err, LenT::MAX.to_usize())),
+        }
     }
 
     /// Returns the length of the [`FixedString`].
@@ -183,18 +226,6 @@ impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
     }
 }
 
-#[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
-impl<LenT: ValidLength> From<String> for FixedString<LenT> {
-    fn from(value: String) -> Self {
-        if value.len() > get_heap_threshold::<LenT>() {
-            let value = value.into_bytes().into();
-            Self(FixedStringRepr::Heap(value))
-        } else {
-            Self(FixedStringRepr::Inline(InlineString::from_str(&value)))
-        }
-    }
-}
-
 impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     fn from(value: FixedString<LenT>) -> Self {
         match value.0 {
@@ -235,13 +266,10 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for std::sync::Arc<str> {
     }
 }
 
-#[cfg(all(
-    feature = "serde",
-    any(feature = "log_using_log", feature = "log_using_tracing")
-))]
+#[cfg(feature = "serde")]
 impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        String::deserialize(deserializer).map(Self::from)
+        Self::try_from(Box::<str>::deserialize(deserializer)?).map_err(serde::de::Error::custom)
     }
 }
 
