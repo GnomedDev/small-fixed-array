@@ -14,8 +14,9 @@ pub struct InvalidLength<T> {
 }
 
 impl<T> InvalidLength<T> {
+    #[cold]
     #[track_caller]
-    fn new(type_name: &'static str, original: Box<[T]>) -> Self {
+    pub(crate) fn new(type_name: &'static str, original: Box<[T]>) -> Self {
         Self {
             backtrace: std::backtrace::Backtrace::capture(),
             type_name,
@@ -50,18 +51,13 @@ pub trait ValidLength: sealed::Sealed + Default + Copy + TryFrom<usize> + Into<u
     const ZERO: Self;
     const MAX: usize;
 
-    /// # Errors
-    ///
-    /// Errors if the val's length cannot fit into Self.
-    #[allow(clippy::type_complexity)]
-    fn from_usize<T>(val: Box<[T]>) -> Result<(Self, Box<[T]>), InvalidLength<T>> {
-        match val.len().try_into() {
-            Ok(len) => Ok((len, val)),
-            Err(_) => Err(InvalidLength::new(std::any::type_name::<Self>(), val)),
-        }
-    }
-
+    #[must_use]
     fn to_usize(self) -> usize;
+
+    #[must_use]
+    fn from_usize(len: usize) -> Option<Self> {
+        len.try_into().ok()
+    }
 }
 
 impl ValidLength for u8 {

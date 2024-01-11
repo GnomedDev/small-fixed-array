@@ -206,7 +206,13 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
 impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     type Error = InvalidLength<T>;
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
-        let (len, boxed_array) = LenT::from_usize(boxed_array)?;
+        let Some(len) = LenT::from_usize(boxed_array.len()) else {
+            return Err(InvalidLength::new(
+                std::any::type_name::<LenT>(),
+                boxed_array,
+            ));
+        };
+
         let array_ptr = Box::into_raw(boxed_array).cast::<T>();
 
         Ok(Self {
