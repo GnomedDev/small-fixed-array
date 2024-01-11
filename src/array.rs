@@ -27,6 +27,19 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
         }
     }
 
+    /// # Safety
+    /// The `ptr.len()` and `len`'s value must match.
+    #[must_use]
+    unsafe fn from_box(ptr: Box<[T]>, len: LenT) -> Self {
+        debug_assert_eq!(ptr.len(), len.to_usize());
+
+        let array_ptr = Box::into_raw(ptr).cast::<T>();
+        Self {
+            ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
+            len,
+        }
+    }
+
     pub(crate) fn small_len(&self) -> LenT {
         self.len
     }
@@ -113,9 +126,8 @@ impl<T, LenT: ValidLength> Default for FixedArray<T, LenT> {
 
 impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
     fn clone(&self) -> Self {
-        Box::<[T]>::from(self.as_slice())
-            .try_into()
-            .unwrap_or_else(|_| panic!("Length of array can't change when cloning"))
+        let ptr = Box::<[T]>::from(self.as_slice());
+        unsafe { Self::from_box(ptr, self.len) }
     }
 }
 
@@ -213,12 +225,7 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
             ));
         };
 
-        let array_ptr = Box::into_raw(boxed_array).cast::<T>();
-
-        Ok(Self {
-            ptr: NonNull::new(array_ptr).expect("Box ptr != nullptr"),
-            len,
-        })
+        Ok(unsafe { Self::from_box(boxed_array, len) })
     }
 }
 
