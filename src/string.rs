@@ -2,8 +2,8 @@ use std::{cmp::PartialEq, fmt::Write as _, hash::Hash};
 
 use crate::{
     array::FixedArray,
-    inline::InlineString,
-    length::{get_heap_threshold, InvalidStrLength, SmallLen, ValidLength},
+    inline::{get_heap_threshold, InlineString},
+    length::{InvalidStrLength, SmallLen, ValidLength},
 };
 
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]

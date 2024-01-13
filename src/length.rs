@@ -1,3 +1,5 @@
+use crate::inline::get_heap_threshold;
+
 mod sealed {
     pub trait Sealed {}
     impl Sealed for u8 {}
@@ -84,10 +86,6 @@ impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
             backtrace: value.backtrace,
         })
     }
-}
-
-pub(crate) const fn get_heap_threshold<LenT>() -> usize {
-    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>() - 1
 }
 
 /// A sealed trait to represent valid lengths for a [`FixedArray`].

@@ -10,6 +10,10 @@ pub(crate) trait TypeSize {}
 #[cfg(not(feature = "typesize"))]
 impl<T> TypeSize for T {}
 
+pub(crate) const fn get_heap_threshold<LenT>() -> usize {
+    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>() - 1
+}
+
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
 #[derive(Clone)]
 pub(crate) struct InlineString<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> {
