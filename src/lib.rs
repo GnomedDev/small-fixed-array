@@ -20,6 +20,7 @@
 #![allow(clippy::module_name_repetitions)]
 
 mod array;
+mod inline;
 mod length;
 mod logging;
 mod string;

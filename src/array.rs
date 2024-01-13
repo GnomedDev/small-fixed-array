@@ -127,6 +127,8 @@ impl<T, LenT: ValidLength> Default for FixedArray<T, LenT> {
 impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
     fn clone(&self) -> Self {
         let ptr = Box::<[T]>::from(self.as_slice());
+
+        // SAFETY: The Box::from cannot make the length mismatch.
         unsafe { Self::from_box(ptr, self.len) }
     }
 }
@@ -225,6 +227,7 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
             ));
         };
 
+        // SAFETY: The length has been derived from the box's length.
         Ok(unsafe { Self::from_box(boxed_array, len) })
     }
 }

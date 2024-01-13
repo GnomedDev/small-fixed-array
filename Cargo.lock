@@ -9,6 +9,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "nonmax"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
+
+[[package]]
 name = "once_cell"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -63,6 +69,7 @@ name = "small-fixed-array"
 version = "0.1.2"
 dependencies = [
  "log",
+ "nonmax",
  "serde",
  "tracing",
  "typesize",
@@ -116,6 +123,7 @@ version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36924509726e38224322c8c90ddfbf4317324338327b7c11b7cf8672cb786da1"
 dependencies = [
+ "nonmax",
  "typesize-derive",
 ]
 
