@@ -42,6 +42,10 @@ impl<T> std::fmt::Display for InvalidLength<T> {
     }
 }
 
+pub(crate) const fn get_heap_threshold<LenT>() -> usize {
+    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>() - 1
+}
+
 /// A sealed trait to represent valid lengths for a [`FixedArray`].
 ///
 /// This is implemented on `u32` for non-16 bit platforms, and `u16` on all platforms.
@@ -50,6 +54,10 @@ impl<T> std::fmt::Display for InvalidLength<T> {
 pub trait ValidLength: sealed::Sealed + Default + Copy + TryFrom<usize> + Into<u32> {
     const ZERO: Self;
     const MAX: usize;
+    #[cfg(feature = "typesize")]
+    type InlineStrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + typesize::TypeSize;
+    #[cfg(not(feature = "typesize"))]
+    type InlineStrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default;
 
     #[must_use]
     fn to_usize(self) -> usize;
@@ -64,6 +72,7 @@ impl ValidLength for u8 {
     const ZERO: Self = 0;
     #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
     const MAX: usize = u8::MAX as usize;
+    type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {
         self.into()
@@ -74,6 +83,7 @@ impl ValidLength for u16 {
     const ZERO: Self = 0;
     #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
     const MAX: usize = u16::MAX as usize;
+    type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {
         self.into()
@@ -85,6 +95,7 @@ impl ValidLength for u32 {
     const ZERO: Self = 0;
     #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
     const MAX: usize = u32::MAX as usize;
+    type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {
         self.try_into()

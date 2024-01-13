@@ -2,31 +2,44 @@ use std::{cmp::PartialEq, fmt::Write as _, hash::Hash};
 
 use crate::{
     array::FixedArray,
-    length::{SmallLen, ValidLength},
+    inline::InlineString,
+    length::{get_heap_threshold, SmallLen, ValidLength},
 };
+
+#[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
+enum FixedStringRepr<LenT: ValidLength> {
+    Heap(FixedArray<u8, LenT>),
+    Inline(InlineString<LenT::InlineStrRepr>),
+}
+
+#[test]
+fn test() {}
 
 /// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
-pub struct FixedString<LenT: ValidLength = SmallLen>(FixedArray<u8, LenT>);
+pub struct FixedString<LenT: ValidLength = SmallLen>(FixedStringRepr<LenT>);
 
 impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn new() -> Self {
-        FixedString(FixedArray::default())
+        FixedString(FixedStringRepr::Inline(InlineString::from_str("")))
     }
 
     /// Returns the length of the [`FixedString`].
     #[must_use]
     pub fn len(&self) -> u32 {
-        self.0.len()
+        match &self.0 {
+            FixedStringRepr::Heap(a) => a.len(),
+            FixedStringRepr::Inline(a) => a.len(),
+        }
     }
 
     /// Returns if the length is equal to 0.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.len() == 0
     }
 
     /// Converts `&`[`FixedString`] to `&str`, this conversion can be performed by [`std::ops::Deref`].
@@ -46,37 +59,48 @@ impl<LenT: ValidLength> std::ops::Deref for FixedString<LenT> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { std::str::from_utf8_unchecked(&self.0) }
+        match &self.0 {
+            // SAFETY: Self holds the type invariant that the array is UTF-8.
+            FixedStringRepr::Heap(a) => unsafe { std::str::from_utf8_unchecked(a) },
+            FixedStringRepr::Inline(a) => return a.as_str(),
+        }
     }
 }
 
 impl<LenT: ValidLength> std::ops::DerefMut for FixedString<LenT> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { std::str::from_utf8_unchecked_mut(&mut self.0) }
+        match &mut self.0 {
+            // SAFETY: Self holds the type invariant that the array is UTF-8.
+            FixedStringRepr::Heap(a) => unsafe { std::str::from_utf8_unchecked_mut(a.as_mut()) },
+            FixedStringRepr::Inline(a) => return a.as_mut_str(),
+        }
     }
 }
 
 impl<LenT: ValidLength> Default for FixedString<LenT> {
     fn default() -> Self {
-        Self(FixedArray::empty())
+        FixedString::new()
     }
 }
 
 impl<LenT: ValidLength> Clone for FixedString<LenT> {
     fn clone(&self) -> Self {
-        Self(self.0.clone())
+        match &self.0 {
+            FixedStringRepr::Heap(a) => Self(FixedStringRepr::Heap(a.clone())),
+            FixedStringRepr::Inline(a) => Self(FixedStringRepr::Inline(*a)),
+        }
     }
 }
 
 impl<LenT: ValidLength> Hash for FixedString<LenT> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        self.as_str().hash(state);
     }
 }
 
 impl<LenT: ValidLength> PartialEq for FixedString<LenT> {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.as_str() == other.as_str()
     }
 }
 
@@ -147,14 +171,22 @@ impl<LenT: ValidLength> std::fmt::Debug for FixedString<LenT> {
 #[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
 impl<LenT: ValidLength> From<String> for FixedString<LenT> {
     fn from(value: String) -> Self {
-        let value = value.into_bytes();
-        Self(value.into())
+        if value.len() > get_heap_threshold::<LenT>() {
+            let value = value.into_bytes().into();
+            Self(FixedStringRepr::Heap(value))
+        } else {
+            Self(FixedStringRepr::Inline(InlineString::from_str(&value)))
+        }
     }
 }
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     fn from(value: FixedString<LenT>) -> Self {
-        unsafe { String::from_utf8_unchecked(value.0.into()) }
+        match value.0 {
+            // SAFETY: Self holds the type invariant that the array is UTF-8.
+            FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
+            FixedStringRepr::Inline(a) => a.as_str().to_string(),
+        }
     }
 }
 
@@ -196,5 +228,32 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
 impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.as_str().serialize(serializer)
+    }
+}
+
+#[cfg(all(test, any(feature = "log_using_log", feature = "log_using_tracing")))]
+mod test {
+    use super::*;
+
+    #[test]
+    fn check_u8_roundtrip() {
+        for i in 0..=u8::MAX {
+            let original = "a".repeat(i.into());
+            let fixed = FixedString::<u8>::from(original);
+
+            assert!(fixed.bytes().all(|c| c == b'a'));
+            assert_eq!(fixed.len(), i.into());
+        }
+    }
+
+    #[test]
+    fn check_sizes() {
+        assert_eq!(std::mem::size_of::<Option<InlineString<[u8; 11]>>>(), 12);
+        assert_eq!(std::mem::align_of::<Option<InlineString<[u8; 11]>>>(), 1);
+        assert_eq!(std::mem::size_of::<Option<FixedArray<u8, u32>>>(), 12);
+        assert_eq!(std::mem::align_of::<Option<FixedArray<u8, u32>>>(), 1);
+        // This sucks!! I want to fix this, soon.... this should so niche somehow.
+        assert_eq!(std::mem::size_of::<FixedStringRepr<u32>>(), 13);
+        assert_eq!(std::mem::align_of::<FixedStringRepr<u32>>(), 1);
     }
 }
