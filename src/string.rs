@@ -12,9 +12,6 @@ enum FixedStringRepr<LenT: ValidLength> {
     Inline(InlineString<LenT::InlineStrRepr>),
 }
 
-#[test]
-fn test() {}
-
 /// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`u32`].
 ///
 /// See module level documentation for more information.

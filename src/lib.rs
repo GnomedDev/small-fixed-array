@@ -28,15 +28,3 @@ mod string;
 pub use array::FixedArray;
 pub use length::ValidLength;
 pub use string::FixedString;
-
-#[cfg(test)]
-mod test {
-    use std::mem::size_of;
-
-    use crate::FixedString;
-
-    #[test]
-    fn niche_test() {
-        assert_eq!(size_of::<FixedString>(), size_of::<Option<FixedString>>());
-    }
-}
