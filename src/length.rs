@@ -42,6 +42,50 @@ impl<T> std::fmt::Display for InvalidLength<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct InvalidStrLength {
+    pub(crate) backtrace: std::backtrace::Backtrace,
+    type_name: &'static str,
+    original: Box<str>,
+}
+
+impl InvalidStrLength {
+    /// Returns the original [`Box<str>`] that could not be converted from.
+    pub fn get_inner(self) -> Box<str> {
+        self.original
+    }
+}
+
+impl std::fmt::Display for InvalidStrLength {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Cannot fit {} into {}:\n\n{}",
+            self.original.len(),
+            self.type_name,
+            self.backtrace
+        )
+    }
+}
+
+impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
+    type Error = std::str::Utf8Error;
+
+    fn try_from(value: InvalidLength<u8>) -> Result<Self, Self::Error> {
+        let original = if let Err(err) = std::str::from_utf8(&value.original) {
+            return Err(err);
+        } else {
+            unsafe { std::str::from_boxed_utf8_unchecked(value.original) }
+        };
+
+        Ok(Self {
+            original,
+            type_name: value.type_name,
+            backtrace: value.backtrace,
+        })
+    }
+}
+
 pub(crate) const fn get_heap_threshold<LenT>() -> usize {
     std::mem::size_of::<usize>() + std::mem::size_of::<LenT>() - 1
 }

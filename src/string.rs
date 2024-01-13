@@ -3,7 +3,7 @@ use std::{cmp::PartialEq, fmt::Write as _, hash::Hash};
 use crate::{
     array::FixedArray,
     inline::InlineString,
-    length::{get_heap_threshold, SmallLen, ValidLength},
+    length::{get_heap_threshold, InvalidStrLength, SmallLen, ValidLength},
 };
 
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
@@ -165,6 +165,24 @@ impl<LenT: ValidLength> std::fmt::Debug for FixedString<LenT> {
     }
 }
 
+impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
+        if value.len() <= get_heap_threshold::<LenT>() {
+            let inner = InlineString::from_str(&value);
+            return Ok(Self(FixedStringRepr::Inline(inner)));
+        }
+
+        match value.into_boxed_bytes().try_into() {
+            Ok(val) => Ok(Self(FixedStringRepr::Heap(val))),
+            Err(err) => Err(err
+                .try_into()
+                .expect("Box<str> -> Box<[u8]> should stay valid UTF8")),
+        }
+    }
+}
+
 #[cfg(any(feature = "log_using_log", feature = "log_using_tracing"))]
 impl<LenT: ValidLength> From<String> for FixedString<LenT> {
     fn from(value: String) -> Self {
@@ -228,15 +246,15 @@ impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
     }
 }
 
-#[cfg(all(test, any(feature = "log_using_log", feature = "log_using_tracing")))]
+#[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn check_u8_roundtrip() {
         for i in 0..=u8::MAX {
-            let original = "a".repeat(i.into());
-            let fixed = FixedString::<u8>::from(original);
+            let original = "a".repeat(i.into()).into_boxed_str();
+            let fixed = FixedString::<u8>::try_from(original).unwrap();
 
             assert!(fixed.bytes().all(|c| c == b'a'));
             assert_eq!(fixed.len(), i.into());
