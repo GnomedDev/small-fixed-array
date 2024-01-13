@@ -1,4 +1,4 @@
-use std::{fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
+use std::{borrow::Cow, fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
 use crate::length::{InvalidLength, SmallLen, ValidLength};
 
@@ -214,6 +214,12 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Box<[T]> {
 impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
     fn from(value: FixedArray<T, LenT>) -> Self {
         value.into_boxed_slice().into_vec()
+    }
+}
+
+impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'static, [T]> {
+    fn from(value: FixedArray<T, LenT>) -> Self {
+        Cow::Owned(value.into_vec())
     }
 }
 

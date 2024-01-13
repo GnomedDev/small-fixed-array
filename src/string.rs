@@ -1,4 +1,4 @@
-use std::{cmp::PartialEq, fmt::Write as _, hash::Hash};
+use std::{borrow::Cow, cmp::PartialEq, fmt::Write as _, hash::Hash};
 
 use crate::{
     array::FixedArray,
@@ -202,6 +202,12 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
             FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
             FixedStringRepr::Inline(a) => a.as_str().to_string(),
         }
+    }
+}
+
+impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'static, str> {
+    fn from(value: FixedString<LenT>) -> Self {
+        Cow::Owned(value.into_string())
     }
 }
 
