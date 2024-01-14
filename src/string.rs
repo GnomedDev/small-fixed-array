@@ -205,7 +205,7 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     }
 }
 
-impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'static, str> {
+impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
     fn from(value: FixedString<LenT>) -> Self {
         Cow::Owned(value.into_string())
     }

@@ -230,7 +230,7 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
     }
 }
 
-impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'static, [T]> {
+impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'_, [T]> {
     fn from(value: FixedArray<T, LenT>) -> Self {
         Cow::Owned(value.into_vec())
     }
