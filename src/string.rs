@@ -269,9 +269,13 @@ mod test {
 
     #[test]
     fn check_sizes() {
+        type DoubleOpt<T> = Option<Option<T>>;
+
         assert_eq!(std::mem::size_of::<Option<InlineString<[u8; 11]>>>(), 12);
         assert_eq!(std::mem::align_of::<Option<InlineString<[u8; 11]>>>(), 1);
         assert_eq!(std::mem::size_of::<Option<FixedArray<u8, u32>>>(), 12);
+        // https://github.com/rust-lang/rust/issues/119507
+        assert_eq!(std::mem::size_of::<DoubleOpt<FixedArray<u8, u32>>>(), 13);
         assert_eq!(std::mem::align_of::<Option<FixedArray<u8, u32>>>(), 1);
         // This sucks!! I want to fix this, soon.... this should so niche somehow.
         assert_eq!(std::mem::size_of::<FixedStringRepr<u32>>(), 13);

@@ -1,11 +1,21 @@
+use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
+
 use crate::inline::get_heap_threshold;
 
 mod sealed {
-    pub trait Sealed {}
-    impl Sealed for u8 {}
-    impl Sealed for u16 {}
+    use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
+
+    pub trait LengthSealed {}
+    impl LengthSealed for u8 {}
+    impl LengthSealed for u16 {}
     #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
-    impl Sealed for u32 {}
+    impl LengthSealed for u32 {}
+
+    pub trait NonZeroSealed {}
+    impl NonZeroSealed for NonZeroU8 {}
+    impl NonZeroSealed for NonZeroU16 {}
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    impl NonZeroSealed for NonZeroU32 {}
 }
 
 #[derive(Debug)]
@@ -88,14 +98,42 @@ impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
     }
 }
 
+#[doc(hidden)]
+pub trait NonZero<Int: ValidLength>:
+    sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + std::fmt::Debug
+{
+    fn new(val: Int) -> Option<Self>;
+}
+
+impl NonZero<u8> for NonZeroU8 {
+    fn new(val: u8) -> Option<Self> {
+        NonZeroU8::new(val)
+    }
+}
+
+impl NonZero<u16> for NonZeroU16 {
+    fn new(val: u16) -> Option<Self> {
+        NonZeroU16::new(val)
+    }
+}
+
+impl NonZero<u32> for NonZeroU32 {
+    fn new(val: u32) -> Option<Self> {
+        NonZeroU32::new(val)
+    }
+}
+
 /// A sealed trait to represent valid lengths for a [`FixedArray`].
 ///
 /// This is implemented on `u32` for non-16 bit platforms, and `u16` on all platforms.
 ///
 /// [`FixedArray`]: `crate::array::FixedArray`
-pub trait ValidLength: sealed::Sealed + Default + Copy + TryFrom<usize> + Into<u32> {
+pub trait ValidLength: sealed::LengthSealed + Copy + TryFrom<usize> + Into<u32> {
     const ZERO: Self;
-    const MAX: usize;
+    const MAX: Self;
+    const DANGLING: Self::NonZero;
+
+    type NonZero: NonZero<Self>;
     #[cfg(feature = "typesize")]
     type InlineStrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + typesize::TypeSize;
     #[cfg(not(feature = "typesize"))]
@@ -112,8 +150,10 @@ pub trait ValidLength: sealed::Sealed + Default + Copy + TryFrom<usize> + Into<u
 
 impl ValidLength for u8 {
     const ZERO: Self = 0;
-    #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
-    const MAX: usize = u8::MAX as usize;
+    const MAX: Self = Self::MAX;
+    const DANGLING: Self::NonZero = Self::NonZero::MAX;
+
+    type NonZero = NonZeroU8;
     type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {
@@ -123,8 +163,10 @@ impl ValidLength for u8 {
 
 impl ValidLength for u16 {
     const ZERO: Self = 0;
-    #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
-    const MAX: usize = u16::MAX as usize;
+    const MAX: Self = Self::MAX;
+    const DANGLING: Self::NonZero = Self::NonZero::MAX;
+
+    type NonZero = NonZeroU16;
     type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {
@@ -135,8 +177,10 @@ impl ValidLength for u16 {
 #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
 impl ValidLength for u32 {
     const ZERO: Self = 0;
-    #[allow(clippy::as_conversions)] // Cannot use `.into()` in const.
-    const MAX: usize = u32::MAX as usize;
+    const MAX: Self = Self::MAX;
+    const DANGLING: Self::NonZero = Self::NonZero::MAX;
+
+    type NonZero = NonZeroU32;
     type InlineStrRepr = [u8; get_heap_threshold::<Self>()];
 
     fn to_usize(self) -> usize {

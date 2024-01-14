@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
-use crate::length::{InvalidLength, SmallLen, ValidLength};
+use crate::length::{InvalidLength, NonZero, SmallLen, ValidLength};
 
 /// A fixed size array with length provided at creation denoted in a [`ValidLength`], by default [`u32`].
 ///
@@ -8,7 +8,7 @@ use crate::length::{InvalidLength, SmallLen, ValidLength};
 #[repr(packed)]
 pub struct FixedArray<T, LenT: ValidLength = SmallLen> {
     ptr: NonNull<T>,
-    len: LenT,
+    len: LenT::NonZero,
 }
 
 impl<T, LenT: ValidLength> FixedArray<T, LenT> {
@@ -23,15 +23,24 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     pub fn empty() -> Self {
         Self {
             ptr: NonNull::dangling(),
-            len: LenT::ZERO,
+            len: LenT::DANGLING,
         }
     }
 
     /// # Safety
-    /// The `ptr.len()` and `len`'s value must match.
+    /// If the slice is empty:
+    /// - `len` must be equal to `LenT::DANGLING`
+    ///
+    /// If the slice is not empty:
+    /// - `len` must be equal to `ptr.len()`
     #[must_use]
-    unsafe fn from_box(ptr: Box<[T]>, len: LenT) -> Self {
-        debug_assert_eq!(ptr.len(), len.to_usize());
+    unsafe fn from_box(ptr: Box<[T]>, len: LenT::NonZero) -> Self {
+        #[cfg(debug_assertions)]
+        if ptr.is_empty() {
+            assert_eq!(len, LenT::DANGLING);
+        } else {
+            assert_eq!(len.into().to_usize(), ptr.len());
+        }
 
         let array_ptr = Box::into_raw(ptr).cast::<T>();
         Self {
@@ -41,7 +50,11 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     }
 
     pub(crate) fn small_len(&self) -> LenT {
-        self.len
+        if { self.ptr } == NonNull::dangling() {
+            LenT::ZERO
+        } else {
+            self.len.into()
+        }
     }
 
     /// Returns the length of the [`FixedArray`].
@@ -233,7 +246,11 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
             ));
         };
 
-        // SAFETY: The length has been derived from the box's length.
+        let len = LenT::NonZero::new(len).unwrap_or(LenT::DANGLING);
+
+        // SAFETY:
+        // If the length was 0, the above `unwrap_or` has just set the value to `LenT::DANGLING`.
+        // If the length was not 0, the `len` was derived from the box length.
         Ok(unsafe { Self::from_box(boxed_array, len) })
     }
 }
@@ -259,7 +276,7 @@ impl<T, LenT: ValidLength> From<Vec<T>> for FixedArray<T, LenT> {
     fn from(value: Vec<T>) -> Self {
         match value.into_boxed_slice().try_into() {
             Ok(arr) => arr,
-            Err(err) => Self::from(truncate_vec(err, LenT::MAX)),
+            Err(err) => Self::from(truncate_vec(err, LenT::MAX.to_usize())),
         }
     }
 }
