@@ -1,3 +1,7 @@
+# 0.2
+
+- Redesigns the API to make truncation explicit, either via `from_*_trunc` or `trunc_into`.
+
 # 0.1.3
 
 - Implements `From<Cow<'_, str/[T]>>` for FixedString/Array, returning Owned Cows.
