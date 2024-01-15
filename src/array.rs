@@ -35,13 +35,23 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     }
 
     /// # Safety
+    /// - `len` must be equal to `ptr.len()`
+    unsafe fn from_box(ptr: Box<[T]>, len: LenT) -> Self {
+        let len = LenT::NonZero::new(len).unwrap_or(LenT::DANGLING);
+
+        // If the length was 0, the above `unwrap_or` has just set the value to `LenT::DANGLING`.
+        // If the length was not 0, the invariant is held by the caller.
+        Self::from_box_with_nonzero(ptr, len)
+    }
+
+    /// # Safety
     /// If the slice is empty:
     /// - `len` must be equal to `LenT::DANGLING`
     ///
     /// If the slice is not empty:
     /// - `len` must be equal to `ptr.len()`
     #[must_use]
-    unsafe fn from_box(ptr: Box<[T]>, len: LenT::NonZero) -> Self {
+    unsafe fn from_box_with_nonzero(ptr: Box<[T]>, len: LenT::NonZero) -> Self {
         #[cfg(debug_assertions)]
         if ptr.is_empty() {
             assert_eq!(len, LenT::DANGLING);
@@ -158,7 +168,7 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
         let ptr = Box::<[T]>::from(self.as_slice());
 
         // SAFETY: The Box::from cannot make the length mismatch.
-        unsafe { Self::from_box(ptr, self.len) }
+        unsafe { Self::from_box_with_nonzero(ptr, self.len) }
     }
 }
 
@@ -245,6 +255,12 @@ impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'_, [T]> {
     }
 }
 
+impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for std::sync::Arc<[T]> {
+    fn from(value: FixedArray<T, LenT>) -> Self {
+        std::sync::Arc::from(value.into_boxed_slice())
+    }
+}
+
 impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     type Error = InvalidLength<T>;
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
@@ -255,11 +271,7 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
             ));
         };
 
-        let len = LenT::NonZero::new(len).unwrap_or(LenT::DANGLING);
-
-        // SAFETY:
-        // If the length was 0, the above `unwrap_or` has just set the value to `LenT::DANGLING`.
-        // If the length was not 0, the `len` was derived from the box length.
+        // SAFETY: `len` was derived from the box length.
         Ok(unsafe { Self::from_box(boxed_array, len) })
     }
 }
@@ -267,12 +279,6 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
 impl<T, LenT: ValidLength> AsRef<[T]> for FixedArray<T, LenT> {
     fn as_ref(&self) -> &[T] {
         self
-    }
-}
-
-impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for std::sync::Arc<[T]> {
-    fn from(value: FixedArray<T, LenT>) -> Self {
-        std::sync::Arc::from(value.into_boxed_slice())
     }
 }
 
