@@ -1,4 +1,7 @@
-use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
+use std::{
+    fmt::{Debug, Display},
+    num::{NonZeroU16, NonZeroU32, NonZeroU8},
+};
 
 use crate::inline::get_heap_threshold;
 
@@ -100,7 +103,7 @@ impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
 
 #[doc(hidden)]
 pub trait NonZero<Int: ValidLength>:
-    sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + std::fmt::Debug
+    sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + Debug
 {
     fn new(val: Int) -> Option<Self>;
 }
@@ -128,7 +131,9 @@ impl NonZero<u32> for NonZeroU32 {
 /// This is implemented on `u32` for non-16 bit platforms, and `u16` on all platforms.
 ///
 /// [`FixedArray`]: `crate::array::FixedArray`
-pub trait ValidLength: sealed::LengthSealed + Copy + TryFrom<usize> + Into<u32> {
+pub trait ValidLength:
+    sealed::LengthSealed + Copy + Display + From<u8> + TryFrom<usize> + Into<u32>
+{
     const ZERO: Self;
     const MAX: Self;
     const DANGLING: Self::NonZero;

@@ -276,6 +276,21 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     }
 }
 
+macro_rules! impl_array_from {
+    ($($N:expr),*) => {
+        $(
+            impl<T, LenT: ValidLength> From<[T; $N]> for FixedArray<T, LenT> {
+                fn from(val: [T; $N]) -> Self {
+                    Self::try_from(Box::from(val))
+                        .unwrap_or_else(|_| unreachable!(concat!($N, " should be less than {}"), LenT::MAX))
+                }
+            }
+        )*
+    };
+}
+
+impl_array_from!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+
 impl<T, LenT: ValidLength> AsRef<[T]> for FixedArray<T, LenT> {
     fn as_ref(&self) -> &[T] {
         self
