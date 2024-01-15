@@ -6,7 +6,7 @@ mod sealed {
     impl<T> Sealed for Vec<T> {}
 }
 
-/// A sealed helper trait for calling [`FixedArray<T>::from_vector_trunc`] or [`FixedString::from_string_trunc`].
+/// A sealed helper trait for calling [`FixedArray<T>::from_vec_trunc`] or [`FixedString::from_string_trunc`].
 ///
 /// Both of these functions may truncate the input in order to fit it into the provided [`ValidLength`],
 /// therefore this trait must be imported in order to make possible truncation made obvious in user code.
