@@ -37,6 +37,12 @@ impl<LenT: ValidLength> FixedString<LenT> {
         FixedString(FixedStringRepr::Inline(InlineString::from_str("")))
     }
 
+    /// # Panics
+    /// Panics if val does not fit in the heap threshold.
+    pub(crate) fn new_inline(val: &str) -> Self {
+        Self(FixedStringRepr::Inline(InlineString::from_str(val)))
+    }
+
     /// Converts a `&str` into a [`FixedString`], allocating if the value cannot fit "inline".
     ///
     /// This method will be more efficent if you would otherwise clone a [`String`] to convert into [`FixedString`],
@@ -49,7 +55,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn from_str_trunc(val: &str) -> Self {
         if val.len() <= get_heap_threshold::<LenT>() {
-            return Self(FixedStringRepr::Inline(InlineString::from_str(val)));
+            return Self::new_inline(val);
         }
 
         Self::from_string_trunc(val.to_owned())
@@ -92,6 +98,12 @@ impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn into_string(self) -> String {
         self.into()
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn is_inline(&self) -> bool {
+        matches!(self, Self(FixedStringRepr::Inline(_)))
     }
 }
 
@@ -269,7 +281,31 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for std::sync::Arc<str> {
 #[cfg(feature = "serde")]
 impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Self::try_from(Box::<str>::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+        use std::marker::PhantomData;
+
+        struct Visitor<LenT: ValidLength>(PhantomData<LenT>);
+
+        impl<'de, LenT: ValidLength> serde::de::Visitor<'de> for Visitor<LenT> {
+            type Value = FixedString<LenT>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "a string up to {} bytes long", LenT::MAX)
+            }
+
+            fn visit_str<E: serde::de::Error>(self, val: &str) -> Result<Self::Value, E> {
+                if val.len() <= get_heap_threshold::<LenT>() {
+                    return Ok(FixedString::new_inline(val));
+                }
+
+                FixedString::try_from(Box::from(val)).map_err(E::custom)
+            }
+
+            fn visit_string<E: serde::de::Error>(self, val: String) -> Result<Self::Value, E> {
+                FixedString::try_from(val.into_boxed_str()).map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_string(Visitor(PhantomData))
     }
 }
 
@@ -284,15 +320,27 @@ impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
 mod test {
     use super::*;
 
-    #[test]
-    fn check_u8_roundtrip() {
+    fn check_u8_roundtrip_generic(to_fixed: fn(Box<str>) -> FixedString<u8>) {
         for i in 0..=u8::MAX {
             let original = "a".repeat(i.into()).into_boxed_str();
-            let fixed = FixedString::<u8>::try_from(original).unwrap();
+            let fixed = to_fixed(original);
 
             assert!(fixed.bytes().all(|c| c == b'a'));
-            assert_eq!(fixed.len(), i.into());
+            assert_eq!(fixed.len(), u32::from(i));
+            assert_eq!(fixed.is_inline(), fixed.len() <= 8);
         }
+    }
+    #[test]
+    fn check_u8_roundtrip() {
+        check_u8_roundtrip_generic(|original| FixedString::<u8>::try_from(original).unwrap());
+    }
+
+    #[test]
+    #[cfg(feature = "serde")]
+    fn check_u8_roundtrip_serde() {
+        check_u8_roundtrip_generic(|original| {
+            serde_json::from_str(&format!("\"{original}\"")).unwrap()
+        });
     }
 
     #[test]

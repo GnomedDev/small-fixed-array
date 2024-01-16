@@ -11,6 +11,9 @@ nonmax = "0.5"
 serde = { version = "1.0.193", optional = true }
 typesize = { version = "0.1.3", optional = true, features = ["nonmax"] }
 
+[dev-dependencies]
+serde_json = "1"
+
 [features]
 typesize = ["dep:typesize"]
 serde = ["dep:serde"]
