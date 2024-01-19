@@ -78,7 +78,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     pub fn len(&self) -> u32 {
         match &self.0 {
             FixedStringRepr::Heap(a) => a.len(),
-            FixedStringRepr::Inline(a) => a.len(),
+            FixedStringRepr::Inline(a) => a.len().into(),
         }
     }
 
@@ -327,7 +327,7 @@ mod test {
 
             assert!(fixed.bytes().all(|c| c == b'a'));
             assert_eq!(fixed.len(), u32::from(i));
-            assert_eq!(fixed.is_inline(), fixed.len() <= 8);
+            assert_eq!(fixed.is_inline(), fixed.len() <= 9);
         }
     }
     #[test]

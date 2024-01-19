@@ -8,8 +8,10 @@
 //! These can be thought of as `Box<[T]>` and `Box<str>`, except the length is denoted as `LenT`, by default [`u32`].
 //!
 //! ## Features
+//! - `nightly`: Speeds up [`FixedString::len`] for small strings, using `portable_simd`.
 //! - `serde`: Provides [`serde`] implementations for [`FixedArray`] and [`FixedString`].
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
+#![cfg_attr(feature = "nightly", feature(portable_simd))]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![warn(clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions)]

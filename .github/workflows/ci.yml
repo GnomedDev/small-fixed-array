@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Cargo test
-        run: cargo test --all-features
+        run: cargo +nightly test --all-features
 
   clippy:
     runs-on: ubuntu-latest
@@ -23,5 +23,17 @@ jobs:
       - name: Install cargo hack
         uses: taiki-e/install-action@cargo-hack
 
+      - name: Run Cargo clippy on all feature combinations but nightly
+        run: cargo hack clippy --feature-powerset --exclude-features nightly -- --deny warnings
+
+  clippy-nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cargo hack
+        uses: taiki-e/install-action@cargo-hack
+
       - name: Run Cargo clippy on all feature combinations
-        run: cargo hack clippy --feature-powerset -- --deny warnings
+        run: cargo +nightly hack clippy --feature-powerset-- --deny warnings

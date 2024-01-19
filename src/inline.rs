@@ -1,5 +1,3 @@
-use nonmax::NonMaxU8;
-
 use crate::ValidLength;
 
 #[cfg(feature = "typesize")]
@@ -10,32 +8,77 @@ pub(crate) trait TypeSize {}
 #[cfg(not(feature = "typesize"))]
 impl<T> TypeSize for T {}
 
+#[must_use]
 pub(crate) const fn get_heap_threshold<LenT>() -> usize {
-    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>() - 1
+    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>()
+}
+
+#[cfg(not(feature = "nightly"))]
+fn find_term_index(haystack: [u8; 16], term: u8, fallback: u8) -> u8 {
+    let mut term_position = fallback;
+
+    // Avoid enumerate to keep the index as a u8
+    for (pos, byte) in (0..16).zip(haystack) {
+        if byte == term {
+            // Do not break, it reduces performance a ton due to branching.
+            term_position = pos;
+        }
+    }
+
+    term_position
+}
+
+#[cfg(feature = "nightly")]
+fn find_term_index(haystack: [u8; 16], term: u8, fallback: u8) -> u8 {
+    use std::simd::prelude::*;
+
+    // Make simd array of [term; 16]
+    let term_arr = u8x16::splat(term);
+    // Convert haystack into simd array
+    let elements = u8x16::from_array(haystack);
+    // Compare each element of the simd array, converting back to a scalar bitmask.
+    let scalar_mask = term_arr.simd_eq(elements).to_bitmask();
+
+    if scalar_mask == 0 {
+        // If the mask is 0, the terminator was not included, so return fallback.
+        fallback
+    } else {
+        // The mask has the terminator as the last character with a bit set, so use trailing zeros.
+        u8::try_from(scalar_mask.trailing_zeros()).unwrap()
+    }
 }
 
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
 #[derive(Clone)]
 pub(crate) struct InlineString<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> {
     arr: StrRepr,
-    len: NonMaxU8,
 }
 
 impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineString<StrRepr> {
-    pub fn from_str(val: &str) -> Self {
-        let len = val.len().try_into().ok();
-        let len = len
-            .and_then(NonMaxU8::new)
-            .expect("must be less than 254 bytes");
+    #[allow(clippy::cast_possible_truncation, clippy::as_conversions)] // `into` is not const.
+    const SMALL_MAX_SIZE: u8 = Self::MAX_SIZE as u8;
+    const MAX_SIZE: usize = std::mem::size_of::<StrRepr>();
+    const TERMINATOR: u8 = 0xFF;
 
+    pub fn from_str(val: &str) -> Self {
         let mut arr = StrRepr::default();
         arr.as_mut()[..val.len()].copy_from_slice(val.as_bytes());
 
-        Self { arr, len }
+        if val.len() != Self::MAX_SIZE {
+            // 0xFF terminate the string, to gain an extra inline character
+            arr.as_mut()[val.len()] = Self::TERMINATOR;
+        }
+
+        Self { arr }
     }
 
-    pub fn len(&self) -> u32 {
-        self.len.get().into()
+    pub fn len(&self) -> u8 {
+        // Copy to a temporary, 16 byte array to allow for SIMD impl.
+        let mut buf = [0_u8; 16];
+        buf[..self.arr.as_ref().len()].copy_from_slice(self.arr.as_ref());
+
+        // This call is different depending on nightly or not.
+        find_term_index(buf, Self::TERMINATOR, Self::SMALL_MAX_SIZE)
     }
 
     pub fn as_str(&self) -> &str {
