@@ -195,7 +195,11 @@ impl<T: Hash, LenT: ValidLength> Hash for FixedArray<T, LenT> {
 
 impl<T: PartialEq, LenT: ValidLength> PartialEq for FixedArray<T, LenT> {
     // https://github.com/rust-lang/rust-clippy/issues/12154
-    #[allow(unconditional_recursion, clippy::unconditional_recursion)]
+    #[allow(
+        unknown_lints,
+        unconditional_recursion,
+        clippy::unconditional_recursion
+    )]
     fn eq(&self, other: &Self) -> bool {
         self.as_slice().eq(other.as_slice())
     }

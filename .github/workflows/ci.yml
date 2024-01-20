@@ -8,32 +8,40 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run Cargo test
         run: cargo +nightly test --all-features
 
-  clippy:
+  clippy-stable:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Install cargo hack
         uses: taiki-e/install-action@cargo-hack
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Cargo clippy on all feature combinations but nightly
-        run: cargo hack clippy --feature-powerset --exclude-features nightly -- --deny warnings
+        run: cargo hack --feature-powerset --exclude-features nightly clippy -- --deny warnings
 
   clippy-nightly:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
 
       - name: Install cargo hack
         uses: taiki-e/install-action@cargo-hack
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Cargo clippy on all feature combinations
-        run: cargo +nightly hack clippy --feature-powerset-- --deny warnings
+        run: cargo +nightly hack clippy --feature-powerset -- --deny warnings
