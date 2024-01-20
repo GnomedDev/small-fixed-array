@@ -55,16 +55,17 @@ pub(crate) struct InlineString<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Defau
 }
 
 impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineString<StrRepr> {
-    #[allow(clippy::cast_possible_truncation, clippy::as_conversions)] // `into` is not const.
-    const SMALL_MAX_SIZE: u8 = Self::MAX_SIZE as u8;
-    const MAX_SIZE: usize = std::mem::size_of::<StrRepr>();
     const TERMINATOR: u8 = 0xFF;
+
+    fn max_len() -> usize {
+        StrRepr::default().as_ref().len()
+    }
 
     pub fn from_str(val: &str) -> Self {
         let mut arr = StrRepr::default();
         arr.as_mut()[..val.len()].copy_from_slice(val.as_bytes());
 
-        if val.len() != Self::MAX_SIZE {
+        if val.len() != Self::max_len() {
             // 0xFF terminate the string, to gain an extra inline character
             arr.as_mut()[val.len()] = Self::TERMINATOR;
         }
@@ -75,10 +76,10 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
     pub fn len(&self) -> u8 {
         // Copy to a temporary, 16 byte array to allow for SIMD impl.
         let mut buf = [0_u8; 16];
-        buf[..self.arr.as_ref().len()].copy_from_slice(self.arr.as_ref());
+        buf[..Self::max_len()].copy_from_slice(self.arr.as_ref());
 
         // This call is different depending on nightly or not.
-        find_term_index(buf, Self::TERMINATOR, Self::SMALL_MAX_SIZE)
+        find_term_index(buf, Self::TERMINATOR, Self::max_len().try_into().unwrap())
     }
 
     pub fn as_str(&self) -> &str {
