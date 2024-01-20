@@ -1,3 +1,9 @@
+# 0.2.1
+
+- Improves FixedString to gain another SSO inline character. This comes at a tiny CPU performance hit that can be counteracted with the `nightly` feature.
+- Improves FixedString deserialisation to take advantage of SSO more.
+- Implements `From<[T]; 0..=16>` for FixedArray.
+
 # 0.2
 
 - Redesigns the API to make truncation explicit, either via `from_*_trunc` or `trunc_into`.
