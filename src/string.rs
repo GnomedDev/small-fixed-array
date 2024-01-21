@@ -1,4 +1,9 @@
-use std::{borrow::Cow, cmp::PartialEq, fmt::Write as _, hash::Hash};
+use std::{
+    borrow::{Borrow, Cow},
+    cmp::PartialEq,
+    fmt::Write as _,
+    hash::Hash,
+};
 
 use crate::{
     array::FixedArray,
@@ -256,6 +261,12 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
 
 impl<LenT: ValidLength> AsRef<str> for FixedString<LenT> {
     fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+impl<LenT: ValidLength> Borrow<str> for FixedString<LenT> {
+    fn borrow(&self) -> &str {
         self
     }
 }
