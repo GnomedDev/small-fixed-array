@@ -1,4 +1,5 @@
-use std::{borrow::Cow, fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
+use alloc::{borrow::Cow, boxed::Box, sync::Arc, vec::Vec};
+use core::{fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
 use crate::length::{InvalidLength, NonZero, SmallLen, ValidLength};
 
@@ -107,13 +108,13 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
         self.into()
     }
 
-    /// Converts `&`[`FixedArray<T>`] to `&[T]`, this conversion can be performed by [`std::ops::Deref`].
+    /// Converts `&`[`FixedArray<T>`] to `&[T]`, this conversion can be performed by [`core::ops::Deref`].
     #[must_use]
     pub fn as_slice(&self) -> &[T] {
         self
     }
 
-    /// Converts `&mut `[`FixedArray<T>`] to `&mut [T]`, this conversion can be performed by [`std::ops::DerefMut`].
+    /// Converts `&mut `[`FixedArray<T>`] to `&mut [T]`, this conversion can be performed by [`core::ops::DerefMut`].
     #[must_use]
     pub fn as_slice_mut(&mut self) -> &mut [T] {
         self
@@ -134,18 +135,18 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
 unsafe impl<T: Send, LenT: ValidLength> Send for FixedArray<T, LenT> {}
 unsafe impl<T: Sync, LenT: ValidLength> Sync for FixedArray<T, LenT> {}
 
-impl<T, LenT: ValidLength> std::ops::Deref for FixedArray<T, LenT> {
+impl<T, LenT: ValidLength> core::ops::Deref for FixedArray<T, LenT> {
     type Target = [T];
     fn deref(&self) -> &Self::Target {
         // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.small_len().to_usize()) }
+        unsafe { core::slice::from_raw_parts(self.ptr.as_ptr(), self.small_len().to_usize()) }
     }
 }
 
-impl<T, LenT: ValidLength> std::ops::DerefMut for FixedArray<T, LenT> {
+impl<T, LenT: ValidLength> core::ops::DerefMut for FixedArray<T, LenT> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
-        unsafe { std::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.small_len().to_usize()) }
+        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.small_len().to_usize()) }
     }
 }
 
@@ -172,7 +173,7 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
     }
 }
 
-impl<T, LenT: ValidLength> std::ops::Index<usize> for FixedArray<T, LenT> {
+impl<T, LenT: ValidLength> core::ops::Index<usize> for FixedArray<T, LenT> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
         let inner: &[T] = self;
@@ -180,7 +181,7 @@ impl<T, LenT: ValidLength> std::ops::Index<usize> for FixedArray<T, LenT> {
     }
 }
 
-impl<T, LenT: ValidLength> std::ops::IndexMut<usize> for FixedArray<T, LenT> {
+impl<T, LenT: ValidLength> core::ops::IndexMut<usize> for FixedArray<T, LenT> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         let inner: &mut [T] = self;
         &mut inner[index]
@@ -188,7 +189,7 @@ impl<T, LenT: ValidLength> std::ops::IndexMut<usize> for FixedArray<T, LenT> {
 }
 
 impl<T: Hash, LenT: ValidLength> Hash for FixedArray<T, LenT> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.as_slice().hash(state);
     }
 }
@@ -208,7 +209,7 @@ impl<T: PartialEq, LenT: ValidLength> PartialEq for FixedArray<T, LenT> {
 impl<T: Eq, LenT: ValidLength> Eq for FixedArray<T, LenT> {}
 
 impl<T: Debug, LenT: ValidLength> Debug for FixedArray<T, LenT> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         <[T] as Debug>::fmt(self, f)
     }
 }
@@ -261,9 +262,9 @@ impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'_, [T]> {
     }
 }
 
-impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for std::sync::Arc<[T]> {
+impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Arc<[T]> {
     fn from(value: FixedArray<T, LenT>) -> Self {
-        std::sync::Arc::from(value.into_boxed_slice())
+        Arc::from(value.into_boxed_slice())
     }
 }
 
@@ -272,7 +273,7 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     fn try_from(boxed_array: Box<[T]>) -> Result<Self, Self::Error> {
         let Some(len) = LenT::from_usize(boxed_array.len()) else {
             return Err(InvalidLength::new(
-                std::any::type_name::<LenT>(),
+                core::any::type_name::<LenT>(),
                 boxed_array,
             ));
         };

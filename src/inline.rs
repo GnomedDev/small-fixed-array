@@ -10,7 +10,7 @@ impl<T> TypeSize for T {}
 
 #[must_use]
 pub(crate) const fn get_heap_threshold<LenT>() -> usize {
-    std::mem::size_of::<usize>() + std::mem::size_of::<LenT>()
+    core::mem::size_of::<usize>() + core::mem::size_of::<LenT>()
 }
 
 #[cfg(not(feature = "nightly"))]
@@ -30,7 +30,7 @@ fn find_term_index(haystack: [u8; 16], term: u8, fallback: u8) -> u8 {
 
 #[cfg(feature = "nightly")]
 fn find_term_index(haystack: [u8; 16], term: u8, fallback: u8) -> u8 {
-    use std::simd::prelude::*;
+    use core::simd::prelude::*;
 
     // Make simd array of [term; 16]
     let term_arr = u8x16::splat(term);
@@ -87,7 +87,7 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         let bytes = &self.arr.as_ref()[..len];
 
         // SAFETY: Accessing only initialised UTF8 bytes based on the length.
-        unsafe { std::str::from_utf8_unchecked(bytes) }
+        unsafe { core::str::from_utf8_unchecked(bytes) }
     }
 
     pub fn as_mut_str(&mut self) -> &mut str {
@@ -95,7 +95,7 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         let bytes = &mut self.arr.as_mut()[..len];
 
         // SAFETY: Accessing only initialised UTF8 bytes based on the length.
-        unsafe { std::str::from_utf8_unchecked_mut(bytes) }
+        unsafe { core::str::from_utf8_unchecked_mut(bytes) }
     }
 }
 
@@ -114,7 +114,7 @@ mod tests {
     }
 
     fn check_roundtrip_repr<Repr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize>() {
-        for i in 0..=std::mem::size_of::<Repr>() {
+        for i in 0..=core::mem::size_of::<Repr>() {
             let original = "a".repeat(i);
             check_roundtrip::<Repr>(&original);
         }

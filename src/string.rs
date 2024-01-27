@@ -1,9 +1,10 @@
-use std::{
-    borrow::{Borrow, Cow},
-    cmp::PartialEq,
-    fmt::Write as _,
-    hash::Hash,
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
 };
+use core::{borrow::Borrow, cmp::PartialEq, fmt::Write as _, hash::Hash};
 
 use crate::{
     array::FixedArray,
@@ -93,7 +94,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
         self.len() == 0
     }
 
-    /// Converts `&`[`FixedString`] to `&str`, this conversion can be performed by [`std::ops::Deref`].
+    /// Converts `&`[`FixedString`] to `&str`, this conversion can be performed by [`core::ops::Deref`].
     #[must_use]
     pub fn as_str(&self) -> &str {
         self
@@ -112,23 +113,23 @@ impl<LenT: ValidLength> FixedString<LenT> {
     }
 }
 
-impl<LenT: ValidLength> std::ops::Deref for FixedString<LenT> {
+impl<LenT: ValidLength> core::ops::Deref for FixedString<LenT> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
         match &self.0 {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
-            FixedStringRepr::Heap(a) => unsafe { std::str::from_utf8_unchecked(a) },
+            FixedStringRepr::Heap(a) => unsafe { core::str::from_utf8_unchecked(a) },
             FixedStringRepr::Inline(a) => return a.as_str(),
         }
     }
 }
 
-impl<LenT: ValidLength> std::ops::DerefMut for FixedString<LenT> {
+impl<LenT: ValidLength> core::ops::DerefMut for FixedString<LenT> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match &mut self.0 {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
-            FixedStringRepr::Heap(a) => unsafe { std::str::from_utf8_unchecked_mut(a.as_mut()) },
+            FixedStringRepr::Heap(a) => unsafe { core::str::from_utf8_unchecked_mut(a.as_mut()) },
             FixedStringRepr::Inline(a) => return a.as_mut_str(),
         }
     }
@@ -150,7 +151,7 @@ impl<LenT: ValidLength> Clone for FixedString<LenT> {
 }
 
 impl<LenT: ValidLength> Hash for FixedString<LenT> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.as_str().hash(state);
     }
 }
@@ -199,26 +200,26 @@ impl<LenT: ValidLength> PartialEq<FixedString<LenT>> for String {
     }
 }
 
-impl<LenT: ValidLength> std::cmp::PartialOrd for FixedString<LenT> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+impl<LenT: ValidLength> core::cmp::PartialOrd for FixedString<LenT> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<LenT: ValidLength> std::cmp::Ord for FixedString<LenT> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+impl<LenT: ValidLength> core::cmp::Ord for FixedString<LenT> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.as_str().cmp(other.as_str())
     }
 }
 
-impl<LenT: ValidLength> std::fmt::Display for FixedString<LenT> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<LenT: ValidLength> core::fmt::Display for FixedString<LenT> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self)
     }
 }
 
-impl<LenT: ValidLength> std::fmt::Debug for FixedString<LenT> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<LenT: ValidLength> core::fmt::Debug for FixedString<LenT> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_char('"')?;
         f.write_str(self)?;
         f.write_char('"')
@@ -271,35 +272,37 @@ impl<LenT: ValidLength> Borrow<str> for FixedString<LenT> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<LenT: ValidLength> AsRef<std::path::Path> for FixedString<LenT> {
     fn as_ref(&self) -> &std::path::Path {
         self.as_str().as_ref()
     }
 }
 
+#[cfg(feature = "std")]
 impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
     fn as_ref(&self) -> &std::ffi::OsStr {
         self.as_str().as_ref()
     }
 }
 
-impl<LenT: ValidLength> From<FixedString<LenT>> for std::sync::Arc<str> {
+impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     fn from(value: FixedString<LenT>) -> Self {
-        std::sync::Arc::from(value.into_string())
+        Arc::from(value.into_string())
     }
 }
 
 #[cfg(feature = "serde")]
 impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        use std::marker::PhantomData;
+        use core::marker::PhantomData;
 
         struct Visitor<LenT: ValidLength>(PhantomData<LenT>);
 
         impl<'de, LenT: ValidLength> serde::de::Visitor<'de> for Visitor<LenT> {
             type Value = FixedString<LenT>;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
                 write!(formatter, "a string up to {} bytes long", LenT::MAX)
             }
 
@@ -350,7 +353,7 @@ mod test {
     #[cfg(feature = "serde")]
     fn check_u8_roundtrip_serde() {
         check_u8_roundtrip_generic(|original| {
-            serde_json::from_str(&format!("\"{original}\"")).unwrap()
+            serde_json::from_str(&alloc::format!("\"{original}\"")).unwrap()
         });
     }
 
@@ -358,14 +361,14 @@ mod test {
     fn check_sizes() {
         type DoubleOpt<T> = Option<Option<T>>;
 
-        assert_eq!(std::mem::size_of::<Option<InlineString<[u8; 11]>>>(), 12);
-        assert_eq!(std::mem::align_of::<Option<InlineString<[u8; 11]>>>(), 1);
-        assert_eq!(std::mem::size_of::<Option<FixedArray<u8, u32>>>(), 12);
+        assert_eq!(core::mem::size_of::<Option<InlineString<[u8; 11]>>>(), 12);
+        assert_eq!(core::mem::align_of::<Option<InlineString<[u8; 11]>>>(), 1);
+        assert_eq!(core::mem::size_of::<Option<FixedArray<u8, u32>>>(), 12);
         // https://github.com/rust-lang/rust/issues/119507
-        assert_eq!(std::mem::size_of::<DoubleOpt<FixedArray<u8, u32>>>(), 13);
-        assert_eq!(std::mem::align_of::<Option<FixedArray<u8, u32>>>(), 1);
+        assert_eq!(core::mem::size_of::<DoubleOpt<FixedArray<u8, u32>>>(), 13);
+        assert_eq!(core::mem::align_of::<Option<FixedArray<u8, u32>>>(), 1);
         // This sucks!! I want to fix this, soon.... this should so niche somehow.
-        assert_eq!(std::mem::size_of::<FixedStringRepr<u32>>(), 13);
-        assert_eq!(std::mem::align_of::<FixedStringRepr<u32>>(), 1);
+        assert_eq!(core::mem::size_of::<FixedStringRepr<u32>>(), 13);
+        assert_eq!(core::mem::align_of::<FixedStringRepr<u32>>(), 1);
     }
 }
