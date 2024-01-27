@@ -13,8 +13,11 @@
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
 #![cfg_attr(feature = "nightly", feature(portable_simd))]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions)]
+
+extern crate alloc;
 
 mod array;
 mod inline;

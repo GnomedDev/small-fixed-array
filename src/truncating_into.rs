@@ -1,5 +1,10 @@
+use alloc::{string::String, vec::Vec};
+
 use crate::{FixedArray, FixedString, ValidLength};
+
 mod sealed {
+    use alloc::{string::String, vec::Vec};
+
     pub trait Sealed {}
 
     impl Sealed for String {}

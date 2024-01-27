@@ -1,12 +1,14 @@
-use std::{
+use core::{
     fmt::{Debug, Display},
     num::{NonZeroU16, NonZeroU32, NonZeroU8},
 };
 
+use alloc::boxed::Box;
+
 use crate::inline::get_heap_threshold;
 
 mod sealed {
-    use std::num::{NonZeroU16, NonZeroU32, NonZeroU8};
+    use core::num::{NonZeroU16, NonZeroU32, NonZeroU8};
 
     pub trait LengthSealed {}
     impl LengthSealed for u8 {}
@@ -23,7 +25,6 @@ mod sealed {
 
 #[derive(Debug)]
 pub struct InvalidLength<T> {
-    pub(crate) backtrace: std::backtrace::Backtrace,
     type_name: &'static str,
     original: Box<[T]>,
 }
@@ -33,7 +34,6 @@ impl<T> InvalidLength<T> {
     #[track_caller]
     pub(crate) fn new(type_name: &'static str, original: Box<[T]>) -> Self {
         Self {
-            backtrace: std::backtrace::Backtrace::capture(),
             type_name,
             original,
         }
@@ -45,21 +45,19 @@ impl<T> InvalidLength<T> {
     }
 }
 
-impl<T> std::fmt::Display for InvalidLength<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T> core::fmt::Display for InvalidLength<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "Cannot fit {} into {}:\n\n{}",
+            "Cannot fit {} into {}",
             self.original.len(),
             self.type_name,
-            self.backtrace
         )
     }
 }
 
 #[derive(Debug)]
 pub struct InvalidStrLength {
-    pub(crate) backtrace: std::backtrace::Backtrace,
     type_name: &'static str,
     original: Box<str>,
 }
@@ -71,32 +69,30 @@ impl InvalidStrLength {
     }
 }
 
-impl std::fmt::Display for InvalidStrLength {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for InvalidStrLength {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "Cannot fit {} into {}:\n\n{}",
+            "Cannot fit {} into {}",
             self.original.len(),
             self.type_name,
-            self.backtrace
         )
     }
 }
 
 impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
-    type Error = std::str::Utf8Error;
+    type Error = core::str::Utf8Error;
 
     fn try_from(value: InvalidLength<u8>) -> Result<Self, Self::Error> {
-        let original = if let Err(err) = std::str::from_utf8(&value.original) {
+        let original = if let Err(err) = core::str::from_utf8(&value.original) {
             return Err(err);
         } else {
-            unsafe { std::str::from_boxed_utf8_unchecked(value.original) }
+            unsafe { alloc::str::from_boxed_utf8_unchecked(value.original) }
         };
 
         Ok(Self {
             original,
             type_name: value.type_name,
-            backtrace: value.backtrace,
         })
     }
 }
