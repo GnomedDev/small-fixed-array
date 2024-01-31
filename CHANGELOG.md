@@ -1,3 +1,10 @@
+# 0.3
+
+- Returns LenT from `FixedArray::len` and `FixedString::len`, instead of `u32`.
+- Implements indexing a `FixedArray` with `LenT`, alongside the `usize` indexing implementation.
+- Implements no-std support, with an optional `std` feature enabled by default.
+- Implements `Borrow<str>` for `FixedString`, allowing a `HashMap` of `FixedString` to be looked up via `&str`.
+
 # 0.2.1
 
 - Improves FixedString to gain another SSO inline character. This comes at a tiny CPU performance hit that can be counteracted with the `nightly` feature.
