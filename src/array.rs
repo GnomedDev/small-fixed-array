@@ -76,24 +76,20 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
         }
     }
 
-    pub(crate) fn small_len(&self) -> LenT {
-        if { self.ptr } == NonNull::dangling() {
+    /// Returns the length of the [`FixedArray`].
+    #[must_use]
+    pub fn len(&self) -> LenT {
+        if self.is_empty() {
             LenT::ZERO
         } else {
             self.len.into()
         }
     }
 
-    /// Returns the length of the [`FixedArray`].
-    #[must_use]
-    pub fn len(&self) -> u32 {
-        self.small_len().into()
-    }
-
     /// Returns if the length is equal to 0.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        ({ self.ptr }) == NonNull::dangling()
     }
 
     /// Converts [`FixedArray<T>`] to [`Vec<T>`], this operation should be cheap.
@@ -139,14 +135,14 @@ impl<T, LenT: ValidLength> core::ops::Deref for FixedArray<T, LenT> {
     type Target = [T];
     fn deref(&self) -> &Self::Target {
         // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
-        unsafe { core::slice::from_raw_parts(self.ptr.as_ptr(), self.small_len().to_usize()) }
+        unsafe { core::slice::from_raw_parts(self.ptr.as_ptr(), self.len().to_usize()) }
     }
 }
 
 impl<T, LenT: ValidLength> core::ops::DerefMut for FixedArray<T, LenT> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // SAFETY: `self.ptr` and `self.len` are both valid and derived from `Box<[T]>`.
-        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.small_len().to_usize()) }
+        unsafe { core::slice::from_raw_parts_mut(self.ptr.as_ptr(), self.len().to_usize()) }
     }
 }
 
@@ -176,15 +172,26 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
 impl<T, LenT: ValidLength> core::ops::Index<usize> for FixedArray<T, LenT> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
-        let inner: &[T] = self;
-        &inner[index]
+        &self.as_slice()[index]
     }
 }
 
 impl<T, LenT: ValidLength> core::ops::IndexMut<usize> for FixedArray<T, LenT> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        let inner: &mut [T] = self;
-        &mut inner[index]
+        &mut self.as_slice_mut()[index]
+    }
+}
+
+impl<T, LenT: ValidLength> core::ops::Index<LenT> for FixedArray<T, LenT> {
+    type Output = T;
+    fn index(&self, index: LenT) -> &Self::Output {
+        &self.as_slice()[index.to_usize()]
+    }
+}
+
+impl<T, LenT: ValidLength> core::ops::IndexMut<LenT> for FixedArray<T, LenT> {
+    fn index_mut(&mut self, index: LenT) -> &mut Self::Output {
+        &mut self.as_slice_mut()[index.to_usize()]
     }
 }
 

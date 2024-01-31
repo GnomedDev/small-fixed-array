@@ -81,7 +81,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
 
     /// Returns the length of the [`FixedString`].
     #[must_use]
-    pub fn len(&self) -> u32 {
+    pub fn len(&self) -> LenT {
         match &self.0 {
             FixedStringRepr::Heap(a) => a.len(),
             FixedStringRepr::Inline(a) => a.len().into(),
@@ -91,7 +91,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// Returns if the length is equal to 0.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.len() == LenT::ZERO
     }
 
     /// Converts `&`[`FixedString`] to `&str`, this conversion can be performed by [`core::ops::Deref`].
@@ -340,7 +340,7 @@ mod test {
             let fixed = to_fixed(original);
 
             assert!(fixed.bytes().all(|c| c == b'a'));
-            assert_eq!(fixed.len(), u32::from(i));
+            assert_eq!(fixed.len(), i);
             assert_eq!(fixed.is_inline(), fixed.len() <= 9);
         }
     }
