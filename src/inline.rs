@@ -89,14 +89,6 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         // SAFETY: Accessing only initialised UTF8 bytes based on the length.
         unsafe { core::str::from_utf8_unchecked(bytes) }
     }
-
-    pub fn as_mut_str(&mut self) -> &mut str {
-        let len: usize = self.len().to_usize();
-        let bytes = &mut self.arr.as_mut()[..len];
-
-        // SAFETY: Accessing only initialised UTF8 bytes based on the length.
-        unsafe { core::str::from_utf8_unchecked_mut(bytes) }
-    }
 }
 
 impl<Repr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> Copy for InlineString<Repr> {}

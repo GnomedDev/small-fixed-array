@@ -10,10 +10,12 @@ use crate::{
     array::FixedArray,
     inline::{get_heap_threshold, InlineString},
     length::{InvalidStrLength, SmallLen, ValidLength},
+    r#static::StaticStr,
 };
 
 #[cfg_attr(feature = "typesize", derive(typesize::derive::TypeSize))]
 enum FixedStringRepr<LenT: ValidLength> {
+    Static(StaticStr<LenT>),
     Heap(FixedArray<u8, LenT>),
     Inline(InlineString<LenT::InlineStrRepr>),
 }
@@ -40,7 +42,7 @@ pub struct FixedString<LenT: ValidLength = SmallLen>(FixedStringRepr<LenT>);
 impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub fn new() -> Self {
-        FixedString(FixedStringRepr::Inline(InlineString::from_str("")))
+        Self::from_static_trunc("")
     }
 
     /// # Panics
@@ -49,10 +51,23 @@ impl<LenT: ValidLength> FixedString<LenT> {
         Self(FixedStringRepr::Inline(InlineString::from_str(val)))
     }
 
+    /// Converts a `&'static str` into a [`FixedString`].
+    ///
+    /// This method will not allocate, or copy the string data.
+    ///
+    /// See [`Self::from_string_trunc`] for truncation behaviour.
+    pub fn from_static_trunc(val: &'static str) -> Self {
+        Self(FixedStringRepr::Static(StaticStr::from_static_str(
+            &val[..LenT::MAX.to_usize()],
+        )))
+    }
+
     /// Converts a `&str` into a [`FixedString`], allocating if the value cannot fit "inline".
     ///
     /// This method will be more efficent if you would otherwise clone a [`String`] to convert into [`FixedString`],
     /// but should not be used in the case that [`String`] ownership could be transfered without reallocation.
+    ///
+    /// If the `&str` is `'static`, it is preferred to use [`Self::from_static_trunc`], which does not need to copy the data around.
     ///
     /// "Inline" refers to Small String Optimisation which allows for Strings with less than 9 to 11 characters
     /// to be stored without allocation, saving a pointer size and an allocation.
@@ -84,6 +99,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     pub fn len(&self) -> LenT {
         match &self.0 {
             FixedStringRepr::Heap(a) => a.len(),
+            FixedStringRepr::Static(a) => a.len(),
             FixedStringRepr::Inline(a) => a.len().into(),
         }
     }
@@ -120,17 +136,8 @@ impl<LenT: ValidLength> core::ops::Deref for FixedString<LenT> {
         match &self.0 {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
             FixedStringRepr::Heap(a) => unsafe { core::str::from_utf8_unchecked(a) },
-            FixedStringRepr::Inline(a) => return a.as_str(),
-        }
-    }
-}
-
-impl<LenT: ValidLength> core::ops::DerefMut for FixedString<LenT> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match &mut self.0 {
-            // SAFETY: Self holds the type invariant that the array is UTF-8.
-            FixedStringRepr::Heap(a) => unsafe { core::str::from_utf8_unchecked_mut(a.as_mut()) },
-            FixedStringRepr::Inline(a) => return a.as_mut_str(),
+            FixedStringRepr::Static(a) => a.as_str(),
+            FixedStringRepr::Inline(a) => a.as_str(),
         }
     }
 }
@@ -146,6 +153,7 @@ impl<LenT: ValidLength> Clone for FixedString<LenT> {
         match &self.0 {
             FixedStringRepr::Heap(a) => Self(FixedStringRepr::Heap(a.clone())),
             FixedStringRepr::Inline(a) => Self(FixedStringRepr::Inline(*a)),
+            FixedStringRepr::Static(a) => Self(FixedStringRepr::Static(*a)),
         }
     }
 }
@@ -250,6 +258,7 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
             FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
             FixedStringRepr::Inline(a) => a.as_str().to_string(),
+            FixedStringRepr::Static(a) => a.as_str().to_string(),
         }
     }
 }
