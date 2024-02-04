@@ -169,19 +169,6 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
     }
 }
 
-impl<T, LenT: ValidLength> core::ops::Index<usize> for FixedArray<T, LenT> {
-    type Output = T;
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.as_slice()[index]
-    }
-}
-
-impl<T, LenT: ValidLength> core::ops::IndexMut<usize> for FixedArray<T, LenT> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.as_slice_mut()[index]
-    }
-}
-
 impl<T, LenT: ValidLength> core::ops::Index<LenT> for FixedArray<T, LenT> {
     type Output = T;
     fn index(&self, index: LenT) -> &Self::Output {
