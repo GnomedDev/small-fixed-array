@@ -58,7 +58,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// See [`Self::from_string_trunc`] for truncation behaviour.
     pub fn from_static_trunc(val: &'static str) -> Self {
         Self(FixedStringRepr::Static(StaticStr::from_static_str(
-            &val[..LenT::MAX.to_usize()],
+            &val[..val.len().min(LenT::MAX.to_usize())],
         )))
     }
 
@@ -126,6 +126,12 @@ impl<LenT: ValidLength> FixedString<LenT> {
     #[must_use]
     pub(crate) fn is_inline(&self) -> bool {
         matches!(self, Self(FixedStringRepr::Inline(_)))
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn is_static(&self) -> bool {
+        matches!(self, Self(FixedStringRepr::Static(_)))
     }
 }
 
@@ -350,12 +356,23 @@ mod test {
 
             assert!(fixed.bytes().all(|c| c == b'a'));
             assert_eq!(fixed.len(), i);
-            assert_eq!(fixed.is_inline(), fixed.len() <= 9);
+
+            if !fixed.is_static() {
+                assert_eq!(fixed.is_inline(), fixed.len() <= 9);
+            }
         }
     }
     #[test]
     fn check_u8_roundtrip() {
         check_u8_roundtrip_generic(|original| FixedString::<u8>::try_from(original).unwrap());
+    }
+
+    #[test]
+    fn check_u8_roundtrip_static() {
+        check_u8_roundtrip_generic(|original| {
+            let static_str = Box::leak(original);
+            FixedString::from_static_trunc(static_str)
+        });
     }
 
     #[test]
