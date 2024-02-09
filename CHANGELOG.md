@@ -1,3 +1,8 @@
+# 0.4
+
+- Removes the `Index<usize>` implementation from `FixedArray`.
+- Implements a `&'static str` variant of `FixedString` created with `FixedString::from_str_static`.
+
 # 0.3
 
 - Returns LenT from `FixedArray::len` and `FixedString::len`, instead of `u32`.
