@@ -17,6 +17,18 @@ jobs:
       - name: Run Cargo test
         run: cargo +nightly test --all-features
 
+  test-msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install stable 1.70 toolchain
+        uses: dtolnay/rust-toolchain@1.70
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Cargo test
+        run: cargo test --features serde,typesize
+
   clippy-stable:
     runs-on: ubuntu-latest
     steps:

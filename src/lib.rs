@@ -11,6 +11,10 @@
 //! - `nightly`: Speeds up [`FixedString::len`] for small strings, using `portable_simd`.
 //! - `serde`: Provides [`serde`] implementations for [`FixedArray`] and [`FixedString`].
 //! - `typesize`: Provides [`typesize`] implementations for [`FixedArray`] and [`FixedString`].
+//!
+//! ## MSRV
+//! The minimum supported Rust version for this crate is currently `1.70`, however this may be broken by dependencies,
+//! to work around this breakage, use the unstable `minimal-versions` cargo flag if MSRV is important to you.
 #![cfg_attr(feature = "nightly", feature(portable_simd))]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
