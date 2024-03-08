@@ -1,3 +1,7 @@
+# 0.4.1
+
+- Implements `clone_from` for FixedString and FixedArray.
+
 # 0.4
 
 - Removes the `Index<usize>` implementation from `FixedArray`.
