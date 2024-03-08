@@ -167,6 +167,14 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
         // SAFETY: The Box::from cannot make the length mismatch.
         unsafe { Self::from_box_with_nonzero(ptr, self.len) }
     }
+
+    fn clone_from(&mut self, source: &Self) {
+        if self.len() == source.len() {
+            self.clone_from_slice(source);
+        } else {
+            *self = source.clone();
+        }
+    }
 }
 
 impl<T, LenT: ValidLength> core::ops::Index<LenT> for FixedArray<T, LenT> {

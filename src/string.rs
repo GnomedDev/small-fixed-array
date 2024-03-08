@@ -162,6 +162,13 @@ impl<LenT: ValidLength> Clone for FixedString<LenT> {
             FixedStringRepr::Static(a) => Self(FixedStringRepr::Static(*a)),
         }
     }
+
+    fn clone_from(&mut self, source: &Self) {
+        match (&mut self.0, &source.0) {
+            (FixedStringRepr::Heap(new), FixedStringRepr::Heap(src)) => new.clone_from(src),
+            _ => *self = source.clone(),
+        }
+    }
 }
 
 impl<LenT: ValidLength> Hash for FixedString<LenT> {
