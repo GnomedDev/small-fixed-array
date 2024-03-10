@@ -168,6 +168,7 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
         unsafe { Self::from_box_with_nonzero(ptr, self.len) }
     }
 
+    #[allow(clippy::assigning_clones)]
     fn clone_from(&mut self, source: &Self) {
         if self.len() == source.len() {
             self.clone_from_slice(source);

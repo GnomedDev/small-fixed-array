@@ -4,11 +4,11 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use core::{borrow::Borrow, cmp::PartialEq, fmt::Write as _, hash::Hash};
+use core::{borrow::Borrow, fmt::Write as _, hash::Hash};
 
 use crate::{
     array::FixedArray,
-    inline::{get_heap_threshold, InlineString},
+    inline::InlineString,
     length::{InvalidStrLength, SmallLen, ValidLength},
     r#static::StaticStr,
 };
@@ -45,10 +45,10 @@ impl<LenT: ValidLength> FixedString<LenT> {
         Self::from_static_trunc("")
     }
 
-    /// # Panics
-    /// Panics if val does not fit in the heap threshold.
-    pub(crate) fn new_inline(val: &str) -> Self {
-        Self(FixedStringRepr::Inline(InlineString::from_str(val)))
+    pub(crate) fn new_inline(val: &str) -> Option<Self> {
+        InlineString::from_str(val)
+            .map(FixedStringRepr::Inline)
+            .map(Self)
     }
 
     /// Converts a `&'static str` into a [`FixedString`].
@@ -75,11 +75,11 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// See [`Self::from_string_trunc`] for truncation behaviour.
     #[must_use]
     pub fn from_str_trunc(val: &str) -> Self {
-        if val.len() <= get_heap_threshold::<LenT>() {
-            return Self::new_inline(val);
+        if let Some(inline) = Self::new_inline(val) {
+            inline
+        } else {
+            Self::from_string_trunc(val.to_owned())
         }
-
-        Self::from_string_trunc(val.to_owned())
     }
 
     /// Converts a [`String`] into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
@@ -166,6 +166,7 @@ impl<LenT: ValidLength> Clone for FixedString<LenT> {
     fn clone_from(&mut self, source: &Self) {
         match (&mut self.0, &source.0) {
             (FixedStringRepr::Heap(new), FixedStringRepr::Heap(src)) => new.clone_from(src),
+            #[allow(clippy::assigning_clones)]
             _ => *self = source.clone(),
         }
     }
@@ -251,9 +252,8 @@ impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
     type Error = InvalidStrLength;
 
     fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        if value.len() <= get_heap_threshold::<LenT>() {
-            let inner = InlineString::from_str(&value);
-            return Ok(Self(FixedStringRepr::Inline(inner)));
+        if let Some(inline) = Self::new_inline(&value) {
+            return Ok(inline);
         }
 
         match value.into_boxed_bytes().try_into() {
@@ -329,11 +329,11 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
             }
 
             fn visit_str<E: serde::de::Error>(self, val: &str) -> Result<Self::Value, E> {
-                if val.len() <= get_heap_threshold::<LenT>() {
-                    return Ok(FixedString::new_inline(val));
+                if let Some(inline) = FixedString::new_inline(val) {
+                    Ok(inline)
+                } else {
+                    FixedString::try_from(Box::from(val)).map_err(E::custom)
                 }
-
-                FixedString::try_from(Box::from(val)).map_err(E::custom)
             }
 
             fn visit_string<E: serde::de::Error>(self, val: String) -> Result<Self::Value, E> {

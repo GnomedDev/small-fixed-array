@@ -1,3 +1,5 @@
+use core::mem::size_of;
+
 use crate::ValidLength;
 
 #[cfg(feature = "typesize")]
@@ -61,8 +63,12 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         StrRepr::default().as_ref().len()
     }
 
-    pub fn from_str(val: &str) -> Self {
+    pub fn from_str(val: &str) -> Option<Self> {
         let mut arr = StrRepr::default();
+        if val.len() > size_of::<Self>() {
+            return None;
+        }
+
         arr.as_mut()[..val.len()].copy_from_slice(val.as_bytes());
 
         if val.len() != Self::max_len() {
@@ -70,7 +76,7 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
             arr.as_mut()[val.len()] = Self::TERMINATOR;
         }
 
-        Self { arr }
+        Some(Self { arr })
     }
 
     pub fn len(&self) -> u8 {
@@ -102,7 +108,7 @@ mod tests {
         Repr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize,
     {
         let inline = InlineString::<Repr>::from_str(original);
-        assert_eq!(original, inline.as_str());
+        assert_eq!(original, inline.expect("should not overflow").as_str());
     }
 
     fn check_roundtrip_repr<Repr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize>() {
@@ -120,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "range end index 9 out of range for slice of length 8")]
+    #[should_panic(expected = "should not overflow")]
     fn check_overflow() {
         check_roundtrip::<[u8; 8]>("012345678");
     }

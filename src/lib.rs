@@ -14,8 +14,9 @@
 #![cfg_attr(feature = "nightly", feature(portable_simd))]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(feature = "std", allow(unused_imports))]
 #![warn(clippy::pedantic, clippy::as_conversions)]
-#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions, unknown_lints)]
 
 extern crate alloc;
 
