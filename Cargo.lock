@@ -65,7 +65,7 @@ dependencies = [
 
 [[package]]
 name = "small-fixed-array"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "serde",
  "serde_json",

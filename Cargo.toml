@@ -2,7 +2,7 @@
 name = "small-fixed-array"
 description = "A crate providing fixed length immutable collections with a low memory footprint."
 repository = "https://github.com/GnomedDev/small-fixed-array"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 license = "MIT"
 

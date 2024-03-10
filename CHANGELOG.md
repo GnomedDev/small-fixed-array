@@ -1,3 +1,7 @@
+# 0.4.3
+
+- Implements `std::error::Error` for `InvalidLength` and `InvalidStrLength`.
+
 # 0.4.2
 
 - Implements `FromStr` for `FixedString`.
