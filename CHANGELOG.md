@@ -1,6 +1,10 @@
+# 0.4.2
+
+- Implements `FromStr` for `FixedString`.
+
 # 0.4.1
 
-- Implements `clone_from` for FixedString and FixedArray.
+- Implements `clone_from` for `FixedString` and `FixedArray`.
 
 # 0.4
 
