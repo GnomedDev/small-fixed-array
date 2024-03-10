@@ -4,7 +4,7 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use core::{borrow::Borrow, fmt::Write as _, hash::Hash};
+use core::{borrow::Borrow, fmt::Write as _, hash::Hash, str::FromStr};
 
 use crate::{
     array::FixedArray,
@@ -248,6 +248,18 @@ impl<LenT: ValidLength> core::fmt::Debug for FixedString<LenT> {
     }
 }
 
+impl<LenT: ValidLength> FromStr for FixedString<LenT> {
+    type Err = InvalidStrLength;
+
+    fn from_str(val: &str) -> Result<Self, Self::Err> {
+        if let Some(inline) = Self::new_inline(val) {
+            Ok(inline)
+        } else {
+            Self::try_from(Box::from(val))
+        }
+    }
+}
+
 impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
     type Error = InvalidStrLength;
 
@@ -329,11 +341,7 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
             }
 
             fn visit_str<E: serde::de::Error>(self, val: &str) -> Result<Self::Value, E> {
-                if let Some(inline) = FixedString::new_inline(val) {
-                    Ok(inline)
-                } else {
-                    FixedString::try_from(Box::from(val)).map_err(E::custom)
-                }
+                FixedString::from_str(val).map_err(E::custom)
             }
 
             fn visit_string<E: serde::de::Error>(self, val: String) -> Result<Self::Value, E> {
