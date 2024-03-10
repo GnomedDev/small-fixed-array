@@ -45,6 +45,9 @@ impl<T> InvalidLength<T> {
     }
 }
 
+#[cfg(feature = "std")]
+impl<T: Debug> std::error::Error for InvalidLength<T> {}
+
 impl<T> core::fmt::Display for InvalidLength<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
@@ -68,6 +71,9 @@ impl InvalidStrLength {
         self.original
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for InvalidStrLength {}
 
 impl core::fmt::Display for InvalidStrLength {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
