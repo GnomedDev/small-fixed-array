@@ -2,8 +2,10 @@
 name = "small-fixed-array"
 description = "A crate providing fixed length immutable collections with a low memory footprint."
 repository = "https://github.com/GnomedDev/small-fixed-array"
+keywords = ["array", "string", "collection", "low-memory"]
+category = ["data-structures"]
 rust-version = "1.70"
-version = "0.4.3"
+version = "0.4.4"
 edition = "2021"
 license = "MIT"
 

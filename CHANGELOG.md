@@ -1,3 +1,7 @@
+# 0.4.4
+
+- Documents Minimum Supported Rust Version
+
 # 0.4.3
 
 - Implements `std::error::Error` for `InvalidLength` and `InvalidStrLength`.
