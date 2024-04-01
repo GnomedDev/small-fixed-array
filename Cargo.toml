@@ -2,6 +2,7 @@
 name = "small-fixed-array"
 description = "A crate providing fixed length immutable collections with a low memory footprint."
 repository = "https://github.com/GnomedDev/small-fixed-array"
+rust-version = "1.70"
 version = "0.4.3"
 edition = "2021"
 license = "MIT"
@@ -16,6 +17,7 @@ serde_json = "1"
 [features]
 default = ["std"]
 
+# Add new features to the jobs in .github/workflows/ci.yml.
 typesize = ["dep:typesize"]
 serde = ["dep:serde"]
 nightly = []

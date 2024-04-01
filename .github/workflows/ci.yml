@@ -17,6 +17,23 @@ jobs:
       - name: Run Cargo test
         run: cargo +nightly test --all-features
 
+  msrv-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout respository
+        uses: actions/checkout@v4
+
+      - name: Install cargo-minimal-versions
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack,cargo-minimal-versions
+
+      - name: Install MSRV toolchain
+        run: rustup toolchain install 1.70
+
+      - name: Run Cargo test on MSRV
+        run: cargo +1.70 minimal-versions test --features typesize,serde
+
   clippy-stable:
     runs-on: ubuntu-latest
     steps:
