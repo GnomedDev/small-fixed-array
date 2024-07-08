@@ -1,3 +1,7 @@
+# 0.4.5
+
+- Implements `ToArrayString` for `FixedString<u8>` under a feature gate.
+
 # 0.4.4
 
 - Documents Minimum Supported Rust Version
