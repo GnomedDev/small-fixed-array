@@ -326,6 +326,16 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     }
 }
 
+#[cfg(feature = "to-arraystring")]
+impl to_arraystring::ToArrayString for &FixedString<u8> {
+    const MAX_LENGTH: usize = 255;
+    type ArrayString = to_arraystring::ArrayString<255>;
+
+    fn to_arraystring(self) -> Self::ArrayString {
+        Self::ArrayString::from(self).unwrap()
+    }
+}
+
 #[cfg(feature = "serde")]
 impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -364,9 +374,9 @@ impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
 mod test {
     use super::*;
 
-    fn check_u8_roundtrip_generic(to_fixed: fn(Box<str>) -> FixedString<u8>) {
+    fn check_u8_roundtrip_generic(to_fixed: fn(String) -> FixedString<u8>) {
         for i in 0..=u8::MAX {
-            let original = "a".repeat(i.into()).into_boxed_str();
+            let original = "a".repeat(i.into());
             let fixed = to_fixed(original);
 
             assert!(fixed.bytes().all(|c| c == b'a'));
@@ -379,13 +389,15 @@ mod test {
     }
     #[test]
     fn check_u8_roundtrip() {
-        check_u8_roundtrip_generic(|original| FixedString::<u8>::try_from(original).unwrap());
+        check_u8_roundtrip_generic(|original| {
+            FixedString::<u8>::try_from(original.into_boxed_str()).unwrap()
+        });
     }
 
     #[test]
     fn check_u8_roundtrip_static() {
         check_u8_roundtrip_generic(|original| {
-            let static_str = Box::leak(original);
+            let static_str = Box::leak(original.into_boxed_str());
             FixedString::from_static_trunc(static_str)
         });
     }
@@ -395,6 +407,20 @@ mod test {
     fn check_u8_roundtrip_serde() {
         check_u8_roundtrip_generic(|original| {
             serde_json::from_str(&alloc::format!("\"{original}\"")).unwrap()
+        });
+    }
+
+    #[test]
+    #[cfg(feature = "to-arraystring")]
+    fn check_u8_roundtrip_arraystring() {
+        use to_arraystring::ToArrayString;
+
+        check_u8_roundtrip_generic(|original| {
+            FixedString::from_str_trunc(
+                FixedString::from_string_trunc(original)
+                    .to_arraystring()
+                    .as_str(),
+            )
         });
     }
 

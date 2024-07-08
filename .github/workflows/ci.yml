@@ -32,7 +32,7 @@ jobs:
         run: rustup toolchain install 1.70
 
       - name: Run Cargo test on MSRV
-        run: cargo +1.70 minimal-versions test --features typesize,serde
+        run: cargo +1.70 minimal-versions test --features typesize,serde,to-arraystring
 
   clippy-stable:
     runs-on: ubuntu-latest
