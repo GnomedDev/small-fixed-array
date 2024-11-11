@@ -288,6 +288,12 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     }
 }
 
+impl<'a, LenT: ValidLength> From<&'a FixedString<LenT>> for Cow<'a, str> {
+    fn from(value: &'a FixedString<LenT>) -> Self {
+        Cow::Borrowed(value.as_str())
+    }
+}
+
 impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
     fn from(value: FixedString<LenT>) -> Self {
         Cow::Owned(value.into_string())

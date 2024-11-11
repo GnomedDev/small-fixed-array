@@ -259,6 +259,12 @@ impl<T, LenT: ValidLength> From<FixedArray<T, LenT>> for Vec<T> {
     }
 }
 
+impl<'a, T: Clone, LenT: ValidLength> From<&'a FixedArray<T, LenT>> for Cow<'a, [T]> {
+    fn from(value: &'a FixedArray<T, LenT>) -> Self {
+        Cow::Borrowed(value.as_slice())
+    }
+}
+
 impl<T: Clone, LenT: ValidLength> From<FixedArray<T, LenT>> for Cow<'_, [T]> {
     fn from(value: FixedArray<T, LenT>) -> Self {
         Cow::Owned(value.into_vec())
