@@ -343,7 +343,7 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
 
         struct Visitor<LenT: ValidLength>(PhantomData<LenT>);
 
-        impl<'de, LenT: ValidLength> serde::de::Visitor<'de> for Visitor<LenT> {
+        impl<LenT: ValidLength> serde::de::Visitor<'_> for Visitor<LenT> {
             type Value = FixedString<LenT>;
 
             fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
