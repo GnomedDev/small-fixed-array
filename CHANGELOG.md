@@ -1,3 +1,7 @@
+# 0.4.6
+
+- Implements conversions from `FixedArray` and `FixedString` to `Cow::Borrowed`
+
 # 0.4.5
 
 - Implements `ToArrayString` for `FixedString<u8>` under a feature gate.
