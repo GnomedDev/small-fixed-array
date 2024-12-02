@@ -1,3 +1,7 @@
+# 0.4.7
+
+- Removes a useless `NonZero` optimisation, fixing `FixedArray<ZST, LenT>`.
+
 # 0.4.6
 
 - Implements conversions from `FixedArray` and `FixedString` to `Cow::Borrowed`
