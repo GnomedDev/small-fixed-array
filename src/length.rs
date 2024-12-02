@@ -107,7 +107,7 @@ impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
 pub trait NonZero<Int: ValidLength>:
     sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + Debug
 {
-    #[expect(unused)]
+    #[allow(unused)]
     fn new(val: Int) -> Option<Self>;
 }
 
@@ -140,7 +140,7 @@ pub trait ValidLength:
     const ZERO: Self;
     const MAX: Self;
     #[deprecated = "will be removed in the next major release"]
-    #[expect(deprecated)]
+    #[allow(deprecated)]
     const DANGLING: Self::NonZero;
 
     #[deprecated = "will be removed in the next major release"]
@@ -162,7 +162,7 @@ pub trait ValidLength:
 impl ValidLength for u8 {
     const ZERO: Self = 0;
     const MAX: Self = Self::MAX;
-    #[expect(deprecated)]
+    #[allow(deprecated)]
     const DANGLING: Self::NonZero = Self::NonZero::MAX;
 
     type NonZero = NonZeroU8;
@@ -176,7 +176,7 @@ impl ValidLength for u8 {
 impl ValidLength for u16 {
     const ZERO: Self = 0;
     const MAX: Self = Self::MAX;
-    #[expect(deprecated)]
+    #[allow(deprecated)]
     const DANGLING: Self::NonZero = Self::NonZero::MAX;
 
     type NonZero = NonZeroU16;
@@ -191,7 +191,7 @@ impl ValidLength for u16 {
 impl ValidLength for u32 {
     const ZERO: Self = 0;
     const MAX: Self = Self::MAX;
-    #[expect(deprecated)]
+    #[allow(deprecated)]
     const DANGLING: Self::NonZero = Self::NonZero::MAX;
 
     type NonZero = NonZeroU32;
