@@ -1,7 +1,7 @@
 use alloc::{borrow::Cow, boxed::Box, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hash::Hash, mem::ManuallyDrop, ptr::NonNull};
 
-use crate::length::{InvalidLength, NonZero, SmallLen, ValidLength};
+use crate::length::{InvalidLength, SmallLen, ValidLength};
 
 #[cold]
 fn truncate_vec<T>(err: InvalidLength<T>, max_len: usize) -> Vec<T> {
@@ -16,7 +16,7 @@ fn truncate_vec<T>(err: InvalidLength<T>, max_len: usize) -> Vec<T> {
 #[repr(packed)]
 pub struct FixedArray<T, LenT: ValidLength = SmallLen> {
     ptr: NonNull<T>,
-    len: LenT::NonZero,
+    len: LenT,
 }
 
 impl<T, LenT: ValidLength> FixedArray<T, LenT> {
@@ -31,34 +31,14 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     pub fn empty() -> Self {
         Self {
             ptr: NonNull::dangling(),
-            len: LenT::DANGLING,
+            len: LenT::ZERO,
         }
     }
 
     /// # Safety
     /// - `len` must be equal to `ptr.len()`
     unsafe fn from_box(ptr: Box<[T]>, len: LenT) -> Self {
-        let len = LenT::NonZero::new(len).unwrap_or(LenT::DANGLING);
-
-        // If the length was 0, the above `unwrap_or` has just set the value to `LenT::DANGLING`.
-        // If the length was not 0, the invariant is held by the caller.
-        Self::from_box_with_nonzero(ptr, len)
-    }
-
-    /// # Safety
-    /// If the slice is empty:
-    /// - `len` must be equal to `LenT::DANGLING`
-    ///
-    /// If the slice is not empty:
-    /// - `len` must be equal to `ptr.len()`
-    #[must_use]
-    unsafe fn from_box_with_nonzero(ptr: Box<[T]>, len: LenT::NonZero) -> Self {
-        #[cfg(debug_assertions)]
-        if ptr.is_empty() {
-            assert_eq!(len, LenT::DANGLING);
-        } else {
-            assert_eq!(len.into().to_usize(), ptr.len());
-        }
+        debug_assert_eq!(len.into().to_usize(), ptr.len());
 
         let array_ptr = Box::into_raw(ptr).cast::<T>();
         Self {
@@ -79,11 +59,7 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Returns the length of the [`FixedArray`].
     #[must_use]
     pub fn len(&self) -> LenT {
-        if self.is_empty() {
-            LenT::ZERO
-        } else {
-            self.len.into()
-        }
+        self.len
     }
 
     /// Returns if the length is equal to 0.
@@ -165,7 +141,7 @@ impl<T: Clone, LenT: ValidLength> Clone for FixedArray<T, LenT> {
         let ptr = self.as_slice().to_vec().into_boxed_slice();
 
         // SAFETY: The Box::from cannot make the length mismatch.
-        unsafe { Self::from_box_with_nonzero(ptr, self.len) }
+        unsafe { Self::from_box(ptr, self.len) }
     }
 
     #[allow(clippy::assigning_clones)]
@@ -198,12 +174,6 @@ impl<T: Hash, LenT: ValidLength> Hash for FixedArray<T, LenT> {
 }
 
 impl<T: PartialEq, LenT: ValidLength> PartialEq for FixedArray<T, LenT> {
-    // https://github.com/rust-lang/rust-clippy/issues/12154
-    #[allow(
-        unknown_lints,
-        unconditional_recursion,
-        clippy::unconditional_recursion
-    )]
     fn eq(&self, other: &Self) -> bool {
         self.as_slice().eq(other.as_slice())
     }
