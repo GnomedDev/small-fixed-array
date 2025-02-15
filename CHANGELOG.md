@@ -1,3 +1,7 @@
+# 0.4.8
+
+- Fixes `FixedArray<ZST, LenT>::is_empty`, as it was not updated after the `NonZero` optimisation was removed.
+
 # 0.4.7
 
 - Removes a useless `NonZero` optimisation, fixing `FixedArray<ZST, LenT>`.
