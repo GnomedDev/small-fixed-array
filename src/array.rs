@@ -65,7 +65,7 @@ impl<T, LenT: ValidLength> FixedArray<T, LenT> {
     /// Returns if the length is equal to 0.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        ({ self.ptr }) == NonNull::dangling()
+        self.len() == LenT::ZERO
     }
 
     /// Converts [`FixedArray<T>`] to [`Vec<T>`], this operation should be cheap.
