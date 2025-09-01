@@ -79,6 +79,24 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         Some(Self { arr })
     }
 
+    pub fn from_char(val: char) -> Option<Self> {
+        let len = val.len_utf8();
+
+        let mut arr = StrRepr::default();
+        if len > size_of::<Self>() {
+            return None;
+        }
+
+        val.encode_utf8(arr.as_mut());
+
+        if len != Self::max_len() {
+            // 0xFF terminate the string, to gain an extra inline character
+            arr.as_mut()[len] = Self::TERMINATOR;
+        }
+
+        Some(Self { arr })
+    }
+
     pub fn len(&self) -> u8 {
         // Copy to a temporary, 16 byte array to allow for SIMD impl.
         let mut buf = [0_u8; 16];
