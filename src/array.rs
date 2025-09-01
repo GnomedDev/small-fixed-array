@@ -262,6 +262,13 @@ impl<T, LenT: ValidLength> TryFrom<Box<[T]>> for FixedArray<T, LenT> {
     }
 }
 
+impl<T, LenT: ValidLength> TryFrom<Vec<T>> for FixedArray<T, LenT> {
+    type Error = InvalidLength<T>;
+    fn try_from(boxed_array: Vec<T>) -> Result<Self, Self::Error> {
+        boxed_array.into_boxed_slice().try_into()
+    }
+}
+
 macro_rules! impl_array_from {
     ($($N:expr),*) => {
         $(
