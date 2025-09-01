@@ -277,6 +277,18 @@ impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
     }
 }
 
+impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if let Some(inline) = Self::new_inline(&value) {
+            return Ok(inline);
+        }
+
+        value.into_boxed_str().try_into()
+    }
+}
+
 impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     fn from(value: FixedString<LenT>) -> Self {
         match value.0 {
