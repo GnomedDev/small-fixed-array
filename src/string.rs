@@ -296,6 +296,8 @@ impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
 
 impl<LenT: ValidLength> From<char> for FixedString<LenT> {
     fn from(value: char) -> Self {
+        use alloc::vec;
+
         if let Some(value) = InlineString::from_char(value) {
             return Self(FixedStringRepr::Inline(value));
         }
