@@ -499,30 +499,38 @@ mod test {
     fn from_char_u8() {
         let s: FixedString<u8> = 'a'.into();
         assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
 
         let s: FixedString<u8> = '¼'.into();
         assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
 
         let s: FixedString<u8> = '⚡'.into();
         assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
 
         let s: FixedString<u8> = '🦀'.into();
         assert_eq!(s.len(), 4);
+        assert!(s.is_inline());
     }
 
     #[test]
     fn from_char_u16() {
         let s: FixedString<u16> = 'a'.into();
         assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
 
         let s: FixedString<u16> = '¼'.into();
         assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
 
         let s: FixedString<u16> = '⚡'.into();
         assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
 
         let s: FixedString<u16> = '🦀'.into();
         assert_eq!(s.len(), 4);
+        assert!(s.is_inline());
     }
 
     #[test]
@@ -530,14 +538,18 @@ mod test {
     fn from_char_u32() {
         let s: FixedString<u32> = 'a'.into();
         assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
 
         let s: FixedString<u32> = '¼'.into();
         assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
 
         let s: FixedString<u32> = '⚡'.into();
         assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
 
         let s: FixedString<u32> = '🦀'.into();
         assert_eq!(s.len(), 4);
+        assert!(s.is_inline());
     }
 }
