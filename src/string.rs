@@ -511,6 +511,7 @@ mod test {
 
         let s: FixedString<u8> = '🦀'.into();
         assert_eq!(s.len(), 4);
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
         assert!(s.is_inline());
     }
 
