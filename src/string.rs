@@ -63,7 +63,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// See [`Self::from_string_trunc`] for truncation behaviour.
     pub fn from_static_trunc(val: &'static str) -> Self {
         Self(FixedStringRepr::Static(StaticStr::from_static_str(
-            truncate_str(val, LenT::MAX.to_usize())
+            truncate_str(val, LenT::MAX.to_usize()),
         )))
     }
 
