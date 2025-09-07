@@ -405,6 +405,19 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_truncating_behaviour() {
+        const STR: &str = "______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________🦀";
+
+        let string = FixedString::<u8>::from_static_trunc(STR);
+
+        let str = str::from_utf8(string.as_bytes()).expect("is utf8");
+
+        assert_eq!(str, string.as_str());
+        assert_ne!(STR, str);
+    }
+
     #[test]
     fn check_u8_roundtrip() {
         check_u8_roundtrip_generic(|original| {
