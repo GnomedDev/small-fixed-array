@@ -23,10 +23,15 @@ enum FixedStringRepr<LenT: ValidLength> {
 #[cold]
 fn truncate_string(err: InvalidStrLength, max_len: usize) -> String {
     let mut value = String::from(err.get_inner());
+    value.truncate(truncate_str(&value, max_len).len());
+    value
+}
+
+#[cold]
+fn truncate_str(string: &str, max_len: usize) -> &str {
     for len in (0..=max_len).rev() {
-        if value.is_char_boundary(len) {
-            value.truncate(len);
-            return value;
+        if string.is_char_boundary(len) {
+            return &string[..len];
         }
     }
 
@@ -58,7 +63,7 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// See [`Self::from_string_trunc`] for truncation behaviour.
     pub fn from_static_trunc(val: &'static str) -> Self {
         Self(FixedStringRepr::Static(StaticStr::from_static_str(
-            &val[..val.len().min(LenT::MAX.to_usize())],
+            truncate_str(val, LenT::MAX.to_usize())
         )))
     }
 
