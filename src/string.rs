@@ -417,7 +417,7 @@ mod test {
 
         let string = FixedString::<u8>::from_static_trunc(STR);
 
-        let str = str::from_utf8(string.as_bytes()).expect("is utf8");
+        let str = std::str::from_utf8(string.as_bytes()).expect("is utf8");
 
         assert_eq!(str, string.as_str());
         assert_ne!(STR, str);
