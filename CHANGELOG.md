@@ -1,3 +1,11 @@
+# 0.4.9
+
+- Implements `TryFrom<Vec<T>>` for `FixedArray<T>`, and `TryFrom<String>` for `FixedString`.
+- Fixes `FixedString::from_static_trunc` panicking on char boundaries when truncating.
+- Implements `From<char>` for `FixedString`.
+
+Thanks to `Joshix-1` on GitHub for these improvements.
+
 # 0.4.8
 
 - Fixes `FixedArray<ZST, LenT>::is_empty`, as it was not updated after the `NonZero` optimisation was removed.

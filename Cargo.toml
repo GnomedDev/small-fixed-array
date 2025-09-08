@@ -5,7 +5,7 @@ repository = "https://github.com/GnomedDev/small-fixed-array"
 keywords = ["array", "string", "collection", "low-memory"]
 categories = ["data-structures"]
 rust-version = "1.70"
-version = "0.4.8"
+version = "0.4.9"
 edition = "2021"
 license = "MIT"
 
