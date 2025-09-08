@@ -294,6 +294,26 @@ impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
     }
 }
 
+impl<LenT: ValidLength> From<char> for FixedString<LenT> {
+    fn from(value: char) -> Self {
+        use alloc::vec;
+
+        if let Some(value) = InlineString::from_char(value) {
+            return Self(FixedStringRepr::Inline(value));
+        }
+
+        let mut bytes = vec![0; value.len_utf8()].into_boxed_slice();
+
+        value.encode_utf8(&mut bytes);
+
+        let bytes = bytes
+            .try_into()
+            .expect("len_utf8 is at most 4, so it will fit in u8");
+
+        Self(FixedStringRepr::Heap(bytes))
+    }
+}
+
 impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     fn from(value: FixedString<LenT>) -> Self {
         match value.0 {
@@ -473,5 +493,64 @@ mod test {
         // This sucks!! I want to fix this, soon.... this should so niche somehow.
         assert_eq!(core::mem::size_of::<FixedStringRepr<u32>>(), 13);
         assert_eq!(core::mem::align_of::<FixedStringRepr<u32>>(), 1);
+    }
+
+    #[test]
+    fn from_char_u8() {
+        let s: FixedString<u8> = 'a'.into();
+        assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
+
+        let s: FixedString<u8> = '¼'.into();
+        assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
+
+        let s: FixedString<u8> = '⚡'.into();
+        assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
+
+        let s: FixedString<u8> = '🦀'.into();
+        assert_eq!(s.len(), 4);
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        assert!(s.is_inline());
+    }
+
+    #[test]
+    fn from_char_u16() {
+        let s: FixedString<u16> = 'a'.into();
+        assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
+
+        let s: FixedString<u16> = '¼'.into();
+        assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
+
+        let s: FixedString<u16> = '⚡'.into();
+        assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
+
+        let s: FixedString<u16> = '🦀'.into();
+        assert_eq!(s.len(), 4);
+        assert!(s.is_inline());
+    }
+
+    #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn from_char_u32() {
+        let s: FixedString<u32> = 'a'.into();
+        assert_eq!(s.len(), 1);
+        assert!(s.is_inline());
+
+        let s: FixedString<u32> = '¼'.into();
+        assert_eq!(s.len(), 2);
+        assert!(s.is_inline());
+
+        let s: FixedString<u32> = '⚡'.into();
+        assert_eq!(s.len(), 3);
+        assert!(s.is_inline());
+
+        let s: FixedString<u32> = '🦀'.into();
+        assert_eq!(s.len(), 4);
+        assert!(s.is_inline());
     }
 }

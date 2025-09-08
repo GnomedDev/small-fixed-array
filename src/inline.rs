@@ -63,20 +63,33 @@ impl<StrRepr: Copy + AsRef<[u8]> + AsMut<[u8]> + Default + TypeSize> InlineStrin
         StrRepr::default().as_ref().len()
     }
 
-    pub fn from_str(val: &str) -> Option<Self> {
+    #[inline]
+    fn from_len_and_write(len: usize, write: impl FnOnce(&mut [u8])) -> Option<Self> {
         let mut arr = StrRepr::default();
-        if val.len() > size_of::<Self>() {
+        if len > size_of::<Self>() {
             return None;
         }
 
-        arr.as_mut()[..val.len()].copy_from_slice(val.as_bytes());
+        write(arr.as_mut());
 
-        if val.len() != Self::max_len() {
+        if len != Self::max_len() {
             // 0xFF terminate the string, to gain an extra inline character
-            arr.as_mut()[val.len()] = Self::TERMINATOR;
+            arr.as_mut()[len] = Self::TERMINATOR;
         }
 
         Some(Self { arr })
+    }
+
+    pub fn from_str(val: &str) -> Option<Self> {
+        Self::from_len_and_write(val.len(), |arr| {
+            arr[..val.len()].copy_from_slice(val.as_bytes());
+        })
+    }
+
+    pub fn from_char(val: char) -> Option<Self> {
+        Self::from_len_and_write(val.len_utf8(), |arr| {
+            val.encode_utf8(arr);
+        })
     }
 
     pub fn len(&self) -> u8 {
