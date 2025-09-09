@@ -319,8 +319,8 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
         match value.0 {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
             FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
-            FixedStringRepr::Inline(a) => a.as_str().to_string(),
-            FixedStringRepr::Static(a) => a.as_str().to_string(),
+            FixedStringRepr::Inline(a) => a.as_str().into(),
+            FixedStringRepr::Static(a) => a.as_str().into(),
         }
     }
 }
@@ -333,7 +333,10 @@ impl<'a, LenT: ValidLength> From<&'a FixedString<LenT>> for Cow<'a, str> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
     fn from(value: FixedString<LenT>) -> Self {
-        Cow::Owned(value.into_string())
+        match value.0 {
+            FixedStringRepr::Static(static_str) => Cow::Borrowed(static_str.as_str()),
+            _ => Cow::Owned(value.into()),
+        }
     }
 }
 
