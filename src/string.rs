@@ -316,11 +316,17 @@ impl<LenT: ValidLength> From<char> for FixedString<LenT> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for String {
     fn from(value: FixedString<LenT>) -> Self {
+        Box::<str>::from(value).into()
+    }
+}
+
+impl<LenT: ValidLength> From<FixedString<LenT>> for Box<str> {
+    fn from(value: FixedString<LenT>) -> Self {
         match value.0 {
+            FixedStringRepr::Inline(a) => a.as_str().into(),
+            FixedStringRepr::Static(a) => a.as_str().into(),
             // SAFETY: Self holds the type invariant that the array is UTF-8.
-            FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
-            FixedStringRepr::Inline(a) => a.as_str().to_string(),
-            FixedStringRepr::Static(a) => a.as_str().to_string(),
+            FixedStringRepr::Heap(a) => unsafe { alloc::str::from_boxed_utf8_unchecked(a.into()) },
         }
     }
 }
