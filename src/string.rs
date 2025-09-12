@@ -4,7 +4,7 @@ use alloc::{
     string::{String},
     sync::Arc,
 };
-use core::{borrow::Borrow, fmt::Write as _, hash::Hash, str::FromStr};
+use core::{borrow::Borrow, hash::Hash, str::FromStr};
 
 use crate::{
     array::FixedArray,
@@ -247,9 +247,7 @@ impl<LenT: ValidLength> core::fmt::Display for FixedString<LenT> {
 
 impl<LenT: ValidLength> core::fmt::Debug for FixedString<LenT> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_char('"')?;
-        f.write_str(self)?;
-        f.write_char('"')
+        write!(f, "{:?}", self.as_str())
     }
 }
 
