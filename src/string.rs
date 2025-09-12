@@ -67,35 +67,46 @@ impl<LenT: ValidLength> FixedString<LenT> {
         )))
     }
 
-    /// Converts a `&str` into a [`FixedString`], allocating if the value cannot fit "inline".
+    /// Converts a string into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
     ///
-    /// This method will be more efficent if you would otherwise clone a [`String`] to convert into [`FixedString`],
-    /// but should not be used in the case that [`String`] ownership could be transfered without reallocation.
+    /// If str is `& 'static str`, it is preferred to use [`Self::from_static_trunc`], which does not need to copy the data around.
     ///
-    /// If the `&str` is `'static`, it is preferred to use [`Self::from_static_trunc`], which does not need to copy the data around.
-    ///
-    /// "Inline" refers to Small String Optimisation which allows for Strings with less than 9 to 11 characters
-    /// to be stored without allocation, saving a pointer size and an allocation.
-    ///
-    /// See [`Self::from_string_trunc`] for truncation behaviour.
+    /// This allows for infallible conversion, but may be lossy in the case of a value above `LenT`'s max.
+    /// For lossless fallible conversion use [`TryFrom`] or [`Self::try_from_string`].
     #[must_use]
-    pub fn from_str_trunc(val: &str) -> Self {
-        if let Some(inline) = Self::new_inline(val) {
-            inline
-        } else {
-            Self::from_string_trunc(val.to_owned())
+    pub fn from_string_trunc<S>(str: S) -> Self
+    where
+        S: AsRef<str>,
+        Box<str>: From<S>,
+    {
+        match Self::try_from_string(str) {
+            Ok(val) => val,
+            Err(err) => {
+                Self::from_string_trunc::<String>(truncate_string(err, LenT::MAX.to_usize()))
+            }
         }
     }
 
-    /// Converts a [`String`] into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
+    /// Converts a string into a [`FixedString`].
     ///
-    /// This allows for infallible conversion, but may be lossy in the case of a value above `LenT`'s max.
-    /// For lossless fallible conversion, convert to [`Box<str>`] using [`String::into_boxed_str`] and use [`TryFrom`].
-    #[must_use]
-    pub fn from_string_trunc(str: String) -> Self {
-        match str.into_boxed_str().try_into() {
-            Ok(val) => val,
-            Err(err) => Self::from_string_trunc(truncate_string(err, LenT::MAX.to_usize())),
+    /// # Errors
+    ///
+    /// This function will return an error if str is longer than `LenT`'s maximum.
+    pub fn try_from_string<S>(str: S) -> Result<Self, InvalidStrLength>
+    where
+        S: AsRef<str>,
+        Box<str>: From<S>,
+    {
+        if let Some(inline) = Self::new_inline(str.as_ref()) {
+            return Ok(inline);
+        }
+
+        match Box::<str>::from(str).into_boxed_bytes().try_into() {
+            Ok(val) => Ok(Self(FixedStringRepr::Heap(val))),
+            Err(err) => Err(
+                // SAFETY: Box<str> -> Box<[u8]> -> Box<str> always works
+                unsafe { InvalidStrLength::from_invalid_length_unchecked(err) },
+            ),
         }
     }
 
@@ -265,34 +276,21 @@ impl<LenT: ValidLength> FromStr for FixedString<LenT> {
     }
 }
 
-impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
-    type Error = InvalidStrLength;
+macro_rules! try_from_impl {
+    ($type:ty) => {
+        impl<LenT: ValidLength> TryFrom<$type> for FixedString<LenT> {
+            type Error = InvalidStrLength;
 
-    fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        if let Some(inline) = Self::new_inline(&value) {
-            return Ok(inline);
+            fn try_from(value: $type) -> Result<Self, Self::Error> {
+                Self::try_from_string(value)
+            }
         }
-
-        match value.into_boxed_bytes().try_into() {
-            Ok(val) => Ok(Self(FixedStringRepr::Heap(val))),
-            Err(err) => Err(err
-                .try_into()
-                .expect("Box<str> -> Box<[u8]> should stay valid UTF8")),
-        }
-    }
+    };
 }
 
-impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
-    type Error = InvalidStrLength;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if let Some(inline) = Self::new_inline(&value) {
-            return Ok(inline);
-        }
-
-        value.into_boxed_str().try_into()
-    }
-}
+try_from_impl!(Box<str>);
+try_from_impl!(String);
+try_from_impl!(Cow<'_, str>);
 
 impl<LenT: ValidLength> From<char> for FixedString<LenT> {
     fn from(value: char) -> Self {
@@ -421,6 +419,8 @@ impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
 
 #[cfg(test)]
 mod test {
+    use core::fmt::Debug;
+
     use super::*;
 
     fn check_u8_roundtrip_generic(to_fixed: fn(String) -> FixedString<u8>) {
@@ -558,5 +558,75 @@ mod test {
         let s: FixedString<u32> = '🦀'.into();
         assert_eq!(s.len(), 4);
         assert!(s.is_inline());
+    }
+
+    fn try_from_rountrip<LenT, S>(value: S)
+    where
+        LenT: ValidLength,
+        FixedString<LenT>: TryFrom<S>,
+        <FixedString<LenT> as TryFrom<S>>::Error: Debug,
+        S: AsRef<str>,
+        S: From<FixedString<LenT>>,
+        Box<str>: From<S>,
+    {
+        let string = value.as_ref().to_string();
+
+        let fixed_str: FixedString<LenT> = value.try_into().expect("Try into should work");
+
+        assert_eq!(fixed_str, string);
+
+        let value: S = fixed_str.into();
+
+        assert_eq!(value.as_ref(), string);
+
+        let fixed_str = FixedString::<LenT>::from_string_trunc(value);
+
+        assert_eq!(fixed_str, string);
+
+        let value: S = fixed_str.into();
+
+        let fixed_str = FixedString::<LenT>::try_from_string(value).expect("try_from_string works");
+
+        assert_eq!(fixed_str, string);
+    }
+
+    #[test]
+    fn test_try_from_string() {
+        let value = "Hello, world!";
+
+        try_from_rountrip::<u8, String>(value.into());
+        try_from_rountrip::<u16, String>(value.into());
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, String>(value.into());
+    }
+
+    #[test]
+    fn test_try_from_boxed_str() {
+        let value = "Hello, world!";
+
+        try_from_rountrip::<u8, Box<str>>(value.into());
+        try_from_rountrip::<u16, Box<str>>(value.into());
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Box<str>>(value.into());
+    }
+
+    #[test]
+    fn test_try_from_owned_cow_string() {
+        let owned_cow: Cow<'static, str> = Cow::Owned("Hello, world!".into());
+
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Cow<'static, str>>(owned_cow.clone());
+        try_from_rountrip::<u16, Cow<'static, str>>(owned_cow.clone());
+        try_from_rountrip::<u8, Cow<'static, str>>(owned_cow);
+    }
+
+    #[test]
+    fn test_try_from_cow_string() {
+        let owned_cow: Cow<'_, str> = Cow::Borrowed("Hello, world!");
+
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Cow<'_, str>>(owned_cow.clone());
+        try_from_rountrip::<u16, Cow<'_, str>>(owned_cow.clone());
+        try_from_rountrip::<u8, Cow<'_, str>>(owned_cow);
     }
 }
