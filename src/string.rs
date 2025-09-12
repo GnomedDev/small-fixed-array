@@ -4,7 +4,7 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use core::{borrow::Borrow, fmt::Write as _, hash::Hash, str::FromStr};
+use core::{borrow::Borrow, hash::Hash, str::FromStr};
 
 use crate::{
     array::FixedArray,
