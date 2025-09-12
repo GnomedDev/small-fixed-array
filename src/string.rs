@@ -268,11 +268,7 @@ impl<LenT: ValidLength> FromStr for FixedString<LenT> {
     type Err = InvalidStrLength;
 
     fn from_str(val: &str) -> Result<Self, Self::Err> {
-        if let Some(inline) = Self::new_inline(val) {
-            Ok(inline)
-        } else {
-            Self::try_from(Box::from(val))
-        }
+        Self::try_from_string(val)
     }
 }
 
@@ -369,7 +365,7 @@ impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     fn from(value: FixedString<LenT>) -> Self {
-        Arc::from(value.into_string())
+        Arc::from(Box::<str>::from(value))
     }
 }
 
@@ -402,7 +398,7 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
             }
 
             fn visit_string<E: serde::de::Error>(self, val: String) -> Result<Self::Value, E> {
-                FixedString::try_from(val.into_boxed_str()).map_err(E::custom)
+                FixedString::try_from_string(val).map_err(E::custom)
             }
         }
 
@@ -478,7 +474,7 @@ mod test {
         use to_arraystring::ToArrayString;
 
         check_u8_roundtrip_generic(|original| {
-            FixedString::from_str_trunc(
+            FixedString::from_string_trunc(
                 FixedString::from_string_trunc(original)
                     .to_arraystring()
                     .as_str(),
