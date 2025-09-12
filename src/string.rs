@@ -1,7 +1,7 @@
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
-    string::{String},
+    string::{String, ToString},
     sync::Arc,
 };
 use core::{borrow::Borrow, fmt::Write as _, hash::Hash, str::FromStr};
@@ -319,8 +319,8 @@ impl<LenT: ValidLength> From<FixedString<LenT>> for String {
         match value.0 {
             // SAFETY: Self holds the type invariant that the array is UTF-8.
             FixedStringRepr::Heap(a) => unsafe { String::from_utf8_unchecked(a.into()) },
-            FixedStringRepr::Inline(a) => a.as_str().into(),
-            FixedStringRepr::Static(a) => a.as_str().into(),
+            FixedStringRepr::Inline(a) => a.as_str().to_string(),
+            FixedStringRepr::Static(a) => a.as_str().to_string(),
         }
     }
 }
