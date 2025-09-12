@@ -5,7 +5,7 @@ use alloc::{
     string::{String},
     sync::Arc,
 };
-use core::{borrow::Borrow, fmt::Write as _, hash::Hash, str::FromStr};
+use core::{borrow::Borrow, hash::Hash, str::FromStr};
 
 use crate::{
     array::FixedArray,
@@ -259,9 +259,7 @@ impl<LenT: ValidLength> core::fmt::Display for FixedString<LenT> {
 
 impl<LenT: ValidLength> core::fmt::Debug for FixedString<LenT> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_char('"')?;
-        f.write_str(self)?;
-        f.write_char('"')
+        write!(f, "{:?}", self.as_str())
     }
 }
 
@@ -351,7 +349,10 @@ impl<'a, LenT: ValidLength> From<&'a FixedString<LenT>> for Cow<'a, str> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
     fn from(value: FixedString<LenT>) -> Self {
-        Cow::Owned(value.into_string())
+        match value.0 {
+            FixedStringRepr::Static(static_str) => Cow::Borrowed(static_str.as_str()),
+            _ => Cow::Owned(value.into()),
+        }
     }
 }
 
@@ -467,6 +468,23 @@ mod test {
 
         assert_eq!(str, string.as_str());
         assert_ne!(STR, str);
+    }
+
+    #[test]
+    fn test_from_static_to_cow() {
+        const STR: &str = "static string";
+
+        let string = FixedString::<u8>::from_static_trunc(STR);
+
+        let cow: std::borrow::Cow<'static, _> = string.into();
+
+        assert_eq!(cow, STR);
+
+        let std::borrow::Cow::Borrowed(string) = cow else {
+            panic!("Expected borrowed string");
+        };
+
+        assert_eq!(string, STR);
     }
 
     #[test]
