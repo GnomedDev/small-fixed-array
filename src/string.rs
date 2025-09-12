@@ -333,7 +333,10 @@ impl<'a, LenT: ValidLength> From<&'a FixedString<LenT>> for Cow<'a, str> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Cow<'_, str> {
     fn from(value: FixedString<LenT>) -> Self {
-        Cow::Owned(value.into_string())
+        match value.0 {
+            FixedStringRepr::Static(static_str) => Cow::Borrowed(static_str.as_str()),
+            _ => Cow::Owned(value.into()),
+        }
     }
 }
 
@@ -441,6 +444,23 @@ mod test {
 
         assert_eq!(str, string.as_str());
         assert_ne!(STR, str);
+    }
+
+    #[test]
+    fn test_from_static_to_cow() {
+        const STR: &str = "static string";
+
+        let string = FixedString::<u8>::from_static_trunc(STR);
+
+        let cow: std::borrow::Cow<'static, _> = string.into();
+
+        assert_eq!(cow, STR);
+
+        let std::borrow::Cow::Borrowed(string) = cow else {
+            panic!("Expected borrowed string");
+        };
+
+        assert_eq!(string, STR);
     }
 
     #[test]
