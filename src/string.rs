@@ -1,6 +1,7 @@
 use alloc::{
     borrow::{Cow},
     boxed::Box,
+    rc::Rc,
     string::{String},
     sync::Arc,
 };
@@ -287,6 +288,23 @@ macro_rules! try_from_impl {
 try_from_impl!(Box<str>);
 try_from_impl!(String);
 try_from_impl!(Cow<'_, str>);
+try_from_impl!(&'_ str);
+
+impl<LenT: ValidLength> TryFrom<Arc<str>> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: Arc<str>) -> Result<Self, Self::Error> {
+        value.as_ref().try_into()
+    }
+}
+
+impl<LenT: ValidLength> TryFrom<Rc<str>> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: Rc<str>) -> Result<Self, Self::Error> {
+        value.as_ref().try_into()
+    }
+}
 
 impl<LenT: ValidLength> From<char> for FixedString<LenT> {
     fn from(value: char) -> Self {
@@ -366,6 +384,12 @@ impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
 impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     fn from(value: FixedString<LenT>) -> Self {
         Arc::from(Box::<str>::from(value))
+    }
+}
+
+impl<LenT: ValidLength> From<FixedString<LenT>> for Rc<str> {
+    fn from(value: FixedString<LenT>) -> Self {
+        Rc::from(Box::<str>::from(value))
     }
 }
 
