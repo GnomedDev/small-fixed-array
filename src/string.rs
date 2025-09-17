@@ -442,6 +442,7 @@ mod test {
     }
 
     // primarily intended to ensure no hangs occur
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
     fn check_u32_partial_roundtrip_generic(to_fixed: fn(String) -> FixedString<u32>) {
         for i in 0..=400u32 {
             let original = "a".repeat(i as usize);
@@ -454,6 +455,13 @@ mod test {
                 assert_eq!(fixed.is_inline(), fixed.len() <= 12);
             }
         }
+    }
+
+    fn check_default_generic<LenT: ValidLength>() {
+        let fixed = FixedString::<LenT>::default();
+
+        assert!(fixed.is_static());
+        assert_eq!(fixed.as_str(), "");
     }
 
     #[test]
@@ -501,6 +509,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
     fn check_u32_partial_roundtrip() {
         check_u32_partial_roundtrip_generic(|original| {
             FixedString::<u32>::try_from(original).unwrap()
@@ -508,6 +517,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
     fn check_u32_partial_roundtrip_static() {
         check_u32_partial_roundtrip_generic(|original| {
             let static_str = Box::leak(original.into_boxed_str());
@@ -535,6 +545,22 @@ mod test {
                     .as_str(),
             )
         });
+    }
+
+    #[test]
+    fn check_default_u8() {
+        check_default_generic::<u8>();
+    }
+
+    #[test]
+    fn check_default_u16() {
+        check_default_generic::<u16>();
+    }
+
+    #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn check_default_u32() {
+        check_default_generic::<u32>();
     }
 
     #[test]
