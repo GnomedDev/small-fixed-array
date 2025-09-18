@@ -70,6 +70,13 @@ impl InvalidStrLength {
     pub fn get_inner(self) -> Box<str> {
         self.original
     }
+
+    pub(crate) unsafe fn from_invalid_length_unchecked(value: InvalidLength<u8>) -> Self {
+        Self {
+            type_name: value.type_name,
+            original: unsafe { alloc::str::from_boxed_utf8_unchecked(value.original) },
+        }
+    }
 }
 
 #[cfg(feature = "std")]
@@ -83,23 +90,6 @@ impl core::fmt::Display for InvalidStrLength {
             self.original.len(),
             self.type_name,
         )
-    }
-}
-
-impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
-    type Error = core::str::Utf8Error;
-
-    fn try_from(value: InvalidLength<u8>) -> Result<Self, Self::Error> {
-        let original = if let Err(err) = core::str::from_utf8(&value.original) {
-            return Err(err);
-        } else {
-            unsafe { alloc::str::from_boxed_utf8_unchecked(value.original) }
-        };
-
-        Ok(Self {
-            original,
-            type_name: value.type_name,
-        })
     }
 }
 
