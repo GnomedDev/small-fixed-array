@@ -2,7 +2,7 @@ use alloc::{
     borrow::{Cow},
     boxed::Box,
     rc::Rc,
-    string::{String},
+    string::String,
     sync::Arc,
 };
 use core::{borrow::Borrow, hash::Hash, str::FromStr};
@@ -36,7 +36,7 @@ fn truncate_str(string: &str, max_len: usize) -> &str {
         }
     }
 
-    unreachable!("Len 0 is a char boundary")
+    unreachable!("Len 0 is a char boundary");
 }
 
 /// A fixed size String with length provided at creation denoted in [`ValidLength`], by default [`u32`].
@@ -62,10 +62,13 @@ impl<LenT: ValidLength> FixedString<LenT> {
     /// This method will not allocate, or copy the string data.
     ///
     /// See [`Self::from_string_trunc`] for truncation behaviour.
-    pub fn from_static_trunc(val: &'static str) -> Self {
-        Self(FixedStringRepr::Static(StaticStr::from_static_str(
-            truncate_str(val, LenT::MAX.to_usize()),
-        )))
+    pub fn from_static_trunc(mut val: &'static str) -> Self {
+        let max_len = LenT::MAX.to_usize();
+        if val.len() > max_len {
+            val = truncate_str(val, max_len);
+        }
+
+        Self(FixedStringRepr::Static(StaticStr::from_static_str(val)))
     }
 
     /// Converts a string into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
@@ -458,6 +461,29 @@ mod test {
         }
     }
 
+    // primarily intended to ensure no hangs occur
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn check_u32_partial_roundtrip_generic(to_fixed: fn(String) -> FixedString<u32>) {
+        for i in 0..=400u32 {
+            let original = "a".repeat(i as usize);
+            let fixed = to_fixed(original);
+
+            assert!(fixed.bytes().all(|c| c == b'a'));
+            assert_eq!(fixed.len(), i);
+
+            if !fixed.is_static() {
+                assert_eq!(fixed.is_inline(), fixed.len() <= 12);
+            }
+        }
+    }
+
+    fn check_default_generic<LenT: ValidLength>() {
+        let fixed = FixedString::<LenT>::default();
+
+        assert!(fixed.is_static());
+        assert_eq!(fixed.as_str(), "");
+    }
+
     #[test]
     fn test_truncating_behaviour() {
         const STR: &str = "______________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________🦀";
@@ -503,6 +529,23 @@ mod test {
     }
 
     #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn check_u32_partial_roundtrip() {
+        check_u32_partial_roundtrip_generic(|original| {
+            FixedString::<u32>::try_from(original).unwrap()
+        });
+    }
+
+    #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn check_u32_partial_roundtrip_static() {
+        check_u32_partial_roundtrip_generic(|original| {
+            let static_str = Box::leak(original.into_boxed_str());
+            FixedString::from_static_trunc(static_str)
+        });
+    }
+
+    #[test]
     #[cfg(feature = "serde")]
     fn check_u8_roundtrip_serde() {
         check_u8_roundtrip_generic(|original| {
@@ -522,6 +565,22 @@ mod test {
                     .as_str(),
             )
         });
+    }
+
+    #[test]
+    fn check_default_u8() {
+        check_default_generic::<u8>();
+    }
+
+    #[test]
+    fn check_default_u16() {
+        check_default_generic::<u16>();
+    }
+
+    #[test]
+    #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+    fn check_default_u32() {
+        check_default_generic::<u32>();
     }
 
     #[test]
