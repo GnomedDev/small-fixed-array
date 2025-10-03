@@ -380,27 +380,32 @@ impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
     }
 }
 
+/// With reference counted pointers the allocation can't be re-used,
+/// so allocating a Box<str> just to copy from there to a new alloc
+/// should be avoided. Instead construct the rc from the &str directly.
+fn fixed_string_into_ref_counted<LenT, RC>(value: FixedString<LenT>) -> RC
+    where LenT: ValidLength,
+        RC: From<Box<str>> + 'static,
+        for<'a> RC: From<&'a str>
+{
+    if matches!(value.0, FixedStringRepr::Heap(_)) {
+        // Move existing allocation to Arc/Rc
+        RC::from(Box::<str>::from(value))
+    } else {
+        // Just construct the Arc/Rc directly
+        RC::from(&*value)
+    }
+}
+
 impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     fn from(value: FixedString<LenT>) -> Self {
-        if matches!(value.0, FixedStringRepr::Heap(_)) {
-            // Move existing allocation to Rc
-            Self::from(Box::<str>::from(value))
-        } else {
-            // Just construct the Rc directly
-            Self::from(&*value)
-        }
+        fixed_string_into_ref_counted(value)
     }
 }
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Rc<str> {
     fn from(value: FixedString<LenT>) -> Self {
-        if matches!(value.0, FixedStringRepr::Heap(_)) {
-            // Move existing allocation to Rc
-            Self::from(Box::<str>::from(value))
-        } else {
-            // Just construct the Rc directly
-            Self::from(&*value)
-        }
+        fixed_string_into_ref_counted(value)
     }
 }
 
