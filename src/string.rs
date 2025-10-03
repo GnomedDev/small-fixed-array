@@ -87,19 +87,23 @@ impl<LenT: ValidLength> FixedString<LenT> {
         if let Some(inline) = Self::new_inline(val) {
             inline
         } else {
-            Self::from_string_trunc(val.to_owned())
+            Self::from_string_trunc(val)
         }
     }
 
     /// Converts a [`String`] into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
     ///
     /// This allows for infallible conversion, but may be lossy in the case of a value above `LenT`'s max.
-    /// For lossless fallible conversion, convert to [`Box<str>`] using [`String::into_boxed_str`] and use [`TryFrom`].
+    /// For lossless fallible conversion use [`TryFrom`] or [`Self::try_from_string`].
     #[must_use]
-    pub fn from_string_trunc(str: String) -> Self {
-        match str.try_into() {
+    pub fn from_string_trunc<S>(str: S) -> Self
+    where
+        S: AsRef<str>,
+        Box<str>: From<S>
+    {
+        match Self::try_from_string::<S>(str) {
             Ok(val) => val,
-            Err(err) => Self::from_string_trunc(truncate_string(err, LenT::MAX.to_usize())),
+            Err(err) => Self::from_string_trunc::<String>(truncate_string(err, LenT::MAX.to_usize())),
         }
     }
 
