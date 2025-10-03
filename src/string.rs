@@ -293,6 +293,22 @@ impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
     }
 }
 
+impl<LenT: ValidLength> TryFrom<&str> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::try_from_string(value)
+    }
+}
+
+impl<LenT: ValidLength> TryFrom<Cow<'_, str>> for FixedString<LenT> {
+    type Error = InvalidStrLength;
+
+    fn try_from(value: Cow<'_, str>) -> Result<Self, Self::Error> {
+        Self::try_from_string(value)
+    }
+}
+
 impl<LenT: ValidLength> From<char> for FixedString<LenT> {
     fn from(value: char) -> Self {
         use alloc::vec;
