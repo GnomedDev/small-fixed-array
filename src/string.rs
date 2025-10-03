@@ -102,6 +102,29 @@ impl<LenT: ValidLength> FixedString<LenT> {
         }
     }
 
+    /// Converts a string into a [`FixedString`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if str is longer than `LenT`'s maximum.
+    pub fn try_from_string<S>(str: S) -> Result<Self, InvalidStrLength>
+    where
+        S: AsRef<str>,
+        Box<str>: From<S>,
+    {
+        if let Some(inline) = Self::new_inline(str.as_ref()) {
+            return Ok(inline);
+        }
+
+        match Box::<str>::from(str).into_boxed_bytes().try_into() {
+            Ok(val) => Ok(Self(FixedStringRepr::Heap(val))),
+            Err(err) => Err(
+                // SAFETY: Box<str> -> Box<[u8]> -> Box<str> always works
+                unsafe { InvalidStrLength::from_invalid_length_unchecked(err) },
+            ),
+        }
+    }
+
     /// Returns the length of the [`FixedString`].
     #[must_use]
     pub fn len(&self) -> LenT {

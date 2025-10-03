@@ -70,6 +70,13 @@ impl InvalidStrLength {
     pub fn get_inner(self) -> Box<str> {
         self.original
     }
+
+    pub(crate) unsafe fn from_invalid_length_unchecked(value: InvalidLength<u8>) -> Self {
+        Self {
+            type_name: value.type_name,
+            original: unsafe { alloc::str::from_boxed_utf8_unchecked(value.original) },
+        }
+    }
 }
 
 #[cfg(feature = "std")]
