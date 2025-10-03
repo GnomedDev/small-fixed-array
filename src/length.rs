@@ -93,23 +93,6 @@ impl core::fmt::Display for InvalidStrLength {
     }
 }
 
-impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
-    type Error = core::str::Utf8Error;
-
-    fn try_from(value: InvalidLength<u8>) -> Result<Self, Self::Error> {
-        let original = if let Err(err) = core::str::from_utf8(&value.original) {
-            return Err(err);
-        } else {
-            unsafe { alloc::str::from_boxed_utf8_unchecked(value.original) }
-        };
-
-        Ok(Self {
-            original,
-            type_name: value.type_name,
-        })
-    }
-}
-
 #[doc(hidden)]
 pub trait NonZero<Int: ValidLength>:
     sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + Debug
