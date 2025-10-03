@@ -482,6 +482,7 @@ impl<LenT: ValidLength> serde::Serialize for FixedString<LenT> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use core::fmt::Debug;
 
     fn check_u8_roundtrip_generic(to_fixed: fn(String) -> FixedString<u8>) {
         for i in 0..=u8::MAX {
@@ -691,5 +692,112 @@ mod test {
         let s: FixedString<u32> = '🦀'.into();
         assert_eq!(s.len(), 4);
         assert!(s.is_inline());
+    }
+
+    fn try_from_rountrip<LenT, S>(value: S)
+    where
+        LenT: ValidLength,
+        FixedString<LenT>: TryFrom<S>,
+        <FixedString<LenT> as TryFrom<S>>::Error: Debug,
+        S: AsRef<str>,
+        S: From<FixedString<LenT>>,
+        Box<str>: From<S>,
+    {
+        let string = value.as_ref().to_string();
+
+        let fixed_str: FixedString<LenT> = value.try_into().expect("Try into should work");
+
+        assert_eq!(fixed_str, string);
+
+        let value: S = fixed_str.into();
+
+        assert_eq!(value.as_ref(), string);
+
+        let fixed_str = FixedString::<LenT>::from_string_trunc(value);
+
+        assert_eq!(fixed_str, string);
+
+        let fixed_str = FixedString::<LenT>::from_string_trunc::<FixedString<LenT>>(fixed_str);
+
+        let value: S = fixed_str.into();
+
+        let fixed_str = FixedString::<LenT>::try_from_string(value).expect("try_from_string works");
+
+        assert_eq!(fixed_str, string);
+
+        let fixed_str = FixedString::<LenT>::try_from_string::<FixedString<LenT>>(fixed_str)
+            .expect("try_from_string works");
+
+        assert_eq!(fixed_str, string);
+    }
+
+    #[test]
+    fn test_try_from_string() {
+        let value = "Hello, world!";
+
+        try_from_rountrip::<u8, String>(value.into());
+        try_from_rountrip::<u16, String>(value.into());
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, String>(value.into());
+    }
+
+    #[test]
+    fn test_try_from_boxed_str() {
+        let value = "Hello, world!";
+
+        try_from_rountrip::<u8, Box<str>>(value.into());
+        try_from_rountrip::<u16, Box<str>>(value.into());
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Box<str>>(value.into());
+    }
+
+    #[test]
+    fn test_try_from_owned_cow_string() {
+        let owned_cow: Cow<'static, str> = Cow::Owned("Hello, world!".into());
+
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Cow<'static, str>>(owned_cow.clone());
+        try_from_rountrip::<u16, Cow<'static, str>>(owned_cow.clone());
+        try_from_rountrip::<u8, Cow<'static, str>>(owned_cow);
+    }
+
+    #[test]
+    fn test_try_from_cow_string() {
+        let owned_cow: Cow<'_, str> = Cow::Borrowed("Hello, world!");
+
+        #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
+        try_from_rountrip::<u32, Cow<'_, str>>(owned_cow.clone());
+        try_from_rountrip::<u16, Cow<'_, str>>(owned_cow.clone());
+        try_from_rountrip::<u8, Cow<'_, str>>(owned_cow);
+    }
+
+    #[test]
+    fn test_try_from_rc_str() {
+        let static_string = "Test string";
+
+        let rc_string: Rc<str> = static_string.into();
+
+        let value: FixedString::<u8> = rc_string.try_into().unwrap();
+
+        assert_eq!(static_string, value);
+
+        let rc_string: Rc<str> = value.into();
+
+        assert_eq!(static_string, rc_string.as_ref());
+    }
+
+    #[test]
+    fn test_try_from_arc_str() {
+        let static_string = "Test string";
+
+        let arc_string: Arc<str> = static_string.into();
+
+        let value: FixedString::<u8> = arc_string.try_into().unwrap();
+
+        assert_eq!(static_string, value);
+
+        let arc_string: Arc<str> = value.into();
+
+        assert_eq!(static_string, arc_string.as_ref());
     }
 }
