@@ -1,6 +1,7 @@
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
+    rc::Rc,
     string::String,
     sync::Arc,
 };
@@ -381,7 +382,25 @@ impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
 
 impl<LenT: ValidLength> From<FixedString<LenT>> for Arc<str> {
     fn from(value: FixedString<LenT>) -> Self {
-        Arc::from(value.into_string())
+        if matches!(value.0, FixedStringRepr::Heap(_)) {
+            // Move existing allocation to Rc
+            Self::from(Box::<str>::from(value))
+        } else {
+            // Just construct the Rc directly
+            Self::from(&*value)
+        }
+    }
+}
+
+impl<LenT: ValidLength> From<FixedString<LenT>> for Rc<str> {
+    fn from(value: FixedString<LenT>) -> Self {
+        if matches!(value.0, FixedStringRepr::Heap(_)) {
+            // Move existing allocation to Rc
+            Self::from(Box::<str>::from(value))
+        } else {
+            // Just construct the Rc directly
+            Self::from(&*value)
+        }
     }
 }
 
