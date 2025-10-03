@@ -71,27 +71,14 @@ impl<LenT: ValidLength> FixedString<LenT> {
         Self(FixedStringRepr::Static(StaticStr::from_static_str(val)))
     }
 
-    /// Converts a `&str` into a [`FixedString`], allocating if the value cannot fit "inline".
+    /// Converts a string into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
     ///
-    /// This method will be more efficent if you would otherwise clone a [`String`] to convert into [`FixedString`],
-    /// but should not be used in the case that [`String`] ownership could be transfered without reallocation.
-    ///
-    /// If the `&str` is `'static`, it is preferred to use [`Self::from_static_trunc`], which does not need to copy the data around.
+    /// If the `&str` value cannot fit "inline" it gets allocated. For owned types the allocation can get reused.
     ///
     /// "Inline" refers to Small String Optimisation which allows for Strings with less than 9 to 11 characters
     /// to be stored without allocation, saving a pointer size and an allocation.
     ///
-    /// See [`Self::from_string_trunc`] for truncation behaviour.
-    #[must_use]
-    pub fn from_str_trunc(val: &str) -> Self {
-        if let Some(inline) = Self::new_inline(val) {
-            inline
-        } else {
-            Self::from_string_trunc(val)
-        }
-    }
-
-    /// Converts a [`String`] into a [`FixedString`], **truncating** if the value is larger than `LenT`'s maximum.
+    /// If the `&str` is `'static`, it is preferred to use [`Self::from_static_trunc`], which does not need to copy the data around.
     ///
     /// This allows for infallible conversion, but may be lossy in the case of a value above `LenT`'s max.
     /// For lossless fallible conversion use [`TryFrom`] or [`Self::try_from_string`].
@@ -573,7 +560,7 @@ mod test {
         use to_arraystring::ToArrayString;
 
         check_u8_roundtrip_generic(|original| {
-            FixedString::from_str_trunc(
+            FixedString::<u8>::from_string_trunc(
                 FixedString::from_string_trunc(original)
                     .to_arraystring()
                     .as_str(),
