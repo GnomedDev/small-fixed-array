@@ -281,11 +281,7 @@ impl<LenT: ValidLength> FromStr for FixedString<LenT> {
     type Err = InvalidStrLength;
 
     fn from_str(val: &str) -> Result<Self, Self::Err> {
-        if let Some(inline) = Self::new_inline(val) {
-            Ok(inline)
-        } else {
-            Self::try_from(Box::from(val))
-        }
+        Self::try_from_string(val)
     }
 }
 
@@ -293,16 +289,7 @@ impl<LenT: ValidLength> TryFrom<Box<str>> for FixedString<LenT> {
     type Error = InvalidStrLength;
 
     fn try_from(value: Box<str>) -> Result<Self, Self::Error> {
-        if let Some(inline) = Self::new_inline(&value) {
-            return Ok(inline);
-        }
-
-        match value.into_boxed_bytes().try_into() {
-            Ok(val) => Ok(Self(FixedStringRepr::Heap(val))),
-            Err(err) => Err(err
-                .try_into()
-                .expect("Box<str> -> Box<[u8]> should stay valid UTF8")),
-        }
+        Self::try_from_string(value)
     }
 }
 
@@ -310,11 +297,7 @@ impl<LenT: ValidLength> TryFrom<String> for FixedString<LenT> {
     type Error = InvalidStrLength;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        if let Some(inline) = Self::new_inline(&value) {
-            return Ok(inline);
-        }
-
-        value.into_boxed_str().try_into()
+        Self::try_from_string(value)
     }
 }
 
@@ -427,11 +410,11 @@ impl<'de, LenT: ValidLength> serde::Deserialize<'de> for FixedString<LenT> {
             }
 
             fn visit_str<E: serde::de::Error>(self, val: &str) -> Result<Self::Value, E> {
-                FixedString::from_str(val).map_err(E::custom)
+                FixedString::try_from_string(val).map_err(E::custom)
             }
 
             fn visit_string<E: serde::de::Error>(self, val: String) -> Result<Self::Value, E> {
-                FixedString::try_from(val.into_boxed_str()).map_err(E::custom)
+                FixedString::try_from_string(val).map_err(E::custom)
             }
         }
 
