@@ -86,11 +86,13 @@ impl<LenT: ValidLength> FixedString<LenT> {
     pub fn from_string_trunc<S>(str: S) -> Self
     where
         S: AsRef<str>,
-        Box<str>: From<S>
+        Box<str>: From<S>,
     {
         match Self::try_from_string::<S>(str) {
             Ok(val) => val,
-            Err(err) => Self::from_string_trunc::<String>(truncate_string(err, LenT::MAX.to_usize())),
+            Err(err) => {
+                Self::from_string_trunc::<String>(truncate_string(err, LenT::MAX.to_usize()))
+            }
         }
     }
 
@@ -407,9 +409,10 @@ impl<LenT: ValidLength> AsRef<std::ffi::OsStr> for FixedString<LenT> {
 /// so allocating a Box<str> just to copy from there to a new alloc
 /// should be avoided. Instead construct the rc from the &str directly.
 fn fixed_string_into_ref_counted<LenT, RC>(value: FixedString<LenT>) -> RC
-    where LenT: ValidLength,
-        RC: From<Box<str>> + 'static,
-        for<'a> RC: From<&'a str>
+where
+    LenT: ValidLength,
+    RC: From<Box<str>> + 'static,
+    for<'a> RC: From<&'a str>,
 {
     if matches!(value.0, FixedStringRepr::Heap(_)) {
         // Move existing allocation to Arc/Rc
