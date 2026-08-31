@@ -445,7 +445,7 @@ mod test {
     #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
     fn check_u32_partial_roundtrip_generic(to_fixed: fn(String) -> FixedString<u32>) {
         for i in 0..=400u32 {
-            let original = "a".repeat(i as usize);
+            let original = "a".repeat(i.try_into().expect("should be less than usize::MAX"));
             let fixed = to_fixed(original);
 
             assert!(fixed.bytes().all(|c| c == b'a'));
