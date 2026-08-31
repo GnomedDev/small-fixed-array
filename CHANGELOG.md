@@ -1,3 +1,8 @@
+# 0.4.11
+
+- Fixes the docs.rs build due to a removed nightly feature.
+- Fixes a minor lint in the test suite.
+
 # 0.4.10
 
 - **Fixes `FixedString<u32>::from_static_trunc` iterating down from u32::MAX.**
