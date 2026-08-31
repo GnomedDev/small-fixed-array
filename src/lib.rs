@@ -17,7 +17,7 @@
 //!
 //! It is considered a breaking change to raise this.
 #![cfg_attr(feature = "nightly", feature(portable_simd))]
-#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", allow(unused_imports))]
 #![warn(clippy::pedantic, clippy::as_conversions)]
