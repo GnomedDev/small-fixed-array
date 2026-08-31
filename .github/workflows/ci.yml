@@ -12,7 +12,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run Cargo test
         run: cargo +nightly test --all-features
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout respository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install cargo-minimal-versions
         uses: taiki-e/install-action@v2
@@ -41,7 +41,7 @@ jobs:
         uses: taiki-e/install-action@cargo-hack
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run Cargo clippy on all feature combinations but nightly
         run: cargo hack --feature-powerset --exclude-features nightly clippy -- --deny warnings
@@ -58,7 +58,7 @@ jobs:
         uses: taiki-e/install-action@cargo-hack
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run Cargo clippy on all feature combinations
         run: cargo +nightly hack clippy --feature-powerset -- --deny warnings
