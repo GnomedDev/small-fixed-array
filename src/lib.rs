@@ -20,7 +20,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", allow(unused_imports))]
-#![warn(clippy::pedantic, clippy::as_conversions)]
+#![warn(unnameable_types, clippy::pedantic, clippy::as_conversions)]
 #![allow(clippy::module_name_repetitions, unknown_lints)]
 
 extern crate alloc;
@@ -33,6 +33,6 @@ mod string;
 mod truncating_into;
 
 pub use array::FixedArray;
-pub use length::ValidLength;
+pub use length::{InvalidLength, InvalidStrLength, ValidLength};
 pub use string::FixedString;
 pub use truncating_into::TruncatingInto;

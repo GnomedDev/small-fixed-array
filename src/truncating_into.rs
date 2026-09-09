@@ -5,6 +5,7 @@ use crate::{FixedArray, FixedString, ValidLength};
 mod sealed {
     use alloc::{string::String, vec::Vec};
 
+    #[allow(unnameable_types)]
     pub trait Sealed {}
 
     impl Sealed for String {}

@@ -10,12 +10,14 @@ use crate::inline::get_heap_threshold;
 mod sealed {
     use core::num::{NonZeroU16, NonZeroU32, NonZeroU8};
 
+    #[allow(unnameable_types)]
     pub trait LengthSealed {}
     impl LengthSealed for u8 {}
     impl LengthSealed for u16 {}
     #[cfg(any(target_pointer_width = "64", target_pointer_width = "32"))]
     impl LengthSealed for u32 {}
 
+    #[allow(unnameable_types)]
     pub trait NonZeroSealed {}
     impl NonZeroSealed for NonZeroU8 {}
     impl NonZeroSealed for NonZeroU16 {}
@@ -40,6 +42,7 @@ impl<T> InvalidLength<T> {
     }
 
     /// Returns the original Box<[T]> that could not be converted from.
+    #[must_use]
     pub fn get_inner(self) -> Box<[T]> {
         self.original
     }
@@ -67,6 +70,7 @@ pub struct InvalidStrLength {
 
 impl InvalidStrLength {
     /// Returns the original [`Box<str>`] that could not be converted from.
+    #[must_use]
     pub fn get_inner(self) -> Box<str> {
         self.original
     }
@@ -104,6 +108,7 @@ impl TryFrom<InvalidLength<u8>> for InvalidStrLength {
 }
 
 #[doc(hidden)]
+#[allow(unnameable_types)]
 pub trait NonZero<Int: ValidLength>:
     sealed::NonZeroSealed + Into<Int> + Sized + Copy + PartialEq + Debug
 {
