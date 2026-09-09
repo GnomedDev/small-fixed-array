@@ -1,3 +1,7 @@
+# 0.4.12
+
+- Fixes the InvalidLength and InvalidStrLength types being unnameable.
+
 # 0.4.11
 
 - Fixes the docs.rs build due to a removed nightly feature.
